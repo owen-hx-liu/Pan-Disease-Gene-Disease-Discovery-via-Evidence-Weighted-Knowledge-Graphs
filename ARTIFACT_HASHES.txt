@@ -1,0 +1,15 @@
+# Frozen-artifact integrity manifest.
+# Every machine MUST verify these hashes before running any method.
+# If a hash does not match, STOP — you are not computing on the same data as the others.
+# Regenerate hashes only on Machine C; when they change, bump this file and tell everyone.
+#
+# format:  <sha256>  <bytes>  <lines>  <path>
+
+8371ce0f2f837e68a7926ef86a3a3e2421b6ebadcc1d7f3b61dde17f0072cab5  360549016  5860540  data/processed/edges_clean_integrated.csv
+
+# --- splits (added by Machine C once scripts/build_deleaked_splits.py has run) ---
+# <sha256>  <bytes>  <lines>  data/processed/splits/train.csv
+# <sha256>  <bytes>  <lines>  data/processed/splits/valid.csv
+# <sha256>  <bytes>  <lines>  data/processed/splits/test.csv
+# <sha256>  <bytes>  <lines>  data/processed/splits/test_R2_orthology_blocked.csv
+# ... (R0-R3 variants)

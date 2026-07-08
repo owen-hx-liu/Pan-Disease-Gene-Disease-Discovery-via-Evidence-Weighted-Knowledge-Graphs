@@ -1,0 +1,44 @@
+{
+  "data.raw.tsv.tsv": [
+    "subject_category",
+    "subject_taxon",
+    "subject_taxon_label",
+    "negated",
+    "predicate",
+    "object_category",
+    "qualifiers",
+    "publications",
+    "has_evidence",
+    "primary_knowledge_source",
+    "aggregator_knowledge_source"
+  ],
+  "data.raw.csv.csv": [
+    "g2p id",
+    "gene symbol",
+    "gene mim",
+    "hgnc id",
+    "previous gene symbols",
+    "disease name",
+    "disease mim",
+    "disease MONDO",
+    "allelic requirement",
+    "cross cutting modifier",
+    "confidence",
+    "variant consequence",
+    "variant types",
+    "molecular mechanism",
+    "molecular mechanism support",
+    "molecular mechanism categorisation",
+    "molecular mechanism evidence",
+    "phenotypes",
+    "publications",
+    "additional mined publications",
+    "panel",
+    "comments",
+    "date of last review",
+    "review"
+  ],
+  "data.raw.json.json": [
+    "JDBOR"
+  ]
+}

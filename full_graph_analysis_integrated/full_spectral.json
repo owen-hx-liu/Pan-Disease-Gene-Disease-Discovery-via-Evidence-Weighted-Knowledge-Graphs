@@ -1,0 +1,9 @@
+{
+  "lcc_nodes": 440863,
+  "lcc_edges": 5577081,
+  "lcc_fraction": 0.97533,
+  "min_degree_lcc": 1,
+  "largest_laplacian_eigenvalue": 20642.006,
+  "fiedler_value": 0.039802,
+  "smallest_eigenvalue": -0.0
+}

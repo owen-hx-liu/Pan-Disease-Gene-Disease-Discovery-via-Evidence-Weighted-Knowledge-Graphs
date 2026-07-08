@@ -1,0 +1,32 @@
+{
+  "method": "networkx louvain_communities, resolution=1",
+  "num_communities": 5149,
+  "modularity": 0.48333,
+  "largest_community_size": 100843,
+  "largest_fraction": 0.2231,
+  "communities_ge100": 31,
+  "communities_ge10": 94,
+  "singletons": 0,
+  "top20_sizes": [
+    100843,
+    90273,
+    36508,
+    34954,
+    28524,
+    25645,
+    20970,
+    17085,
+    16529,
+    13316,
+    10872,
+    10342,
+    5933,
+    4179,
+    2840,
+    2746,
+    2440,
+    2333,
+    2199,
+    1383
+  ]
+}

@@ -1,0 +1,56 @@
+# ---- large data (regenerate via the pipeline; do not commit ~7GB of dumps) ----
+data/raw/
+data/processed/*.csv
+data/processed/*.pkl
+data/processed/benchmark*/
+data/processed/consensus/
+data/processed/provenance/
+data/processed/*.json
+data/processed/*.png
+*.embeddings
+node2vec_embeddings.csv
+*_embeddings.csv
+
+# keep small, useful processed artifacts in version control explicitly:
+!data/processed/relationship_vocab.csv
+!data/processed/dataset_relation_map.json
+!data/registry/
+
+# ---- secrets / local env ----
+.env
+*.secret
+secrets.*
+
+# ---- python ----
+venv/
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# ---- editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- generated output subfolders (large; distributed via the data channel) ----
+data/processed/splits/
+data/processed/results/
+data/processed/predictions/
+data/processed/validation/
+data/processed/benchmark_integrated/
+
+# ---- large interactive HTML explorers / figures (optional; keep if small) ----
+*.html
+fullgraph_*.png
+
+# ---- root-level generated artifacts (regenerate via pipeline; not for the code repo) ----
+*.pkl
+/consensus_predictor_model.pkl
+/spectral_partition_map.png
+/network_growth_over_time.png
+/transe_embeddings.csv
+# never commit raw dumps under any nesting (belt-and-suspenders with data/raw/ above)
+**/data.raw.*

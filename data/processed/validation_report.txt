@@ -1,0 +1,68 @@
+================================================================================
+ENTITY RESOLUTION VALIDATION REPORT
+================================================================================
+Generated: 2026-01-28 17:37:03
+Overall Status: FATAL
+
+--------------------------------------------------------------------------------
+SUMMARY STATISTICS
+--------------------------------------------------------------------------------
+  Total Edges                                    4,714,924
+  Total Nodes                                      458,475
+  Total Raw IDs                                    695,917
+  Unique Canonical IDs                             458,475
+
+--------------------------------------------------------------------------------
+SEVERITY SUMMARY
+--------------------------------------------------------------------------------
+  🔴 FATAL        1 check(s) failed
+  ❌ ERROR        1 check(s) failed
+
+--------------------------------------------------------------------------------
+DETAILED CHECKS
+--------------------------------------------------------------------------------
+
+❌ Raw ID Leakage Check
+   Status: FAIL
+   Severity: FATAL
+   Violations: 9,429,848
+   Sample:
+     - Edge source: HGNC:16925
+     - Edge target: MONDO:0000430
+     - Edge source: HGNC:16925
+     - Edge target: Xenbase:XB-GENE-29081667
+     - Edge source: HGNC:16925
+     - Edge target: Xenbase:XB-GENE-29081615
+     - Edge source: HGNC:16925
+     - Edge target: MGI:1347245
+     - Edge source: HGNC:16925
+     - Edge target: Xenbase:XB-GENE-5920801
+
+✅ Unresolved ID Check
+   Status: PASS
+
+✅ Edge Deduplication
+   Status: PASS
+
+✅ Evidence Integrity
+   Status: PASS
+
+❌ Invalid Self-Loops
+   Status: FAIL
+   Severity: ERROR
+   Violations: 1,946
+   Sample:
+     - HGNC:16925 --[biolink:orthologous_to]-> HGNC:16925
+     - Xenbase:XB-GENE-25874648 --[biolink:orthologous_to]-> Xenbase:XB-GENE-25874648
+     - Xenbase:XB-GENE-29098508 --[biolink:orthologous_to]-> Xenbase:XB-GENE-29098508
+     - HGNC:16925 --[biolink:interacts_with]-> HGNC:16925
+     - FB:FBgn0032515 --[biolink:interacts_with]-> FB:FBgn0032515
+     - WB:WBGene00015176 --[biolink:interacts_with]-> WB:WBGene00015176
+     - WB:WBGene00003209 --[biolink:interacts_with]-> WB:WBGene00003209
+     - MGI:894324 --[biolink:interacts_with]-> MGI:894324
+     - MGI:1889844 --[biolink:interacts_with]-> MGI:1889844
+     - PomBase:SPAC30D11.10 --[biolink:interacts_with]-> PomBase:SPAC30D11.10
+
+✅ Suspicious Self-Loops (allowed)
+   Status: PASS
+================================================================================

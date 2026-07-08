@@ -1,0 +1,18 @@
+=== SPECTRAL / CONNECTIVITY ANALYSIS (FULL GRAPH) ===
+Largest connected component: 428520 nodes, 5487821 edges (97.4% of graph)
+The graph is a single dominant connected component (algebraic connectivity > 0).
+Largest Laplacian eigenvalue (lambda_max): 20642.01
+Minimum degree in LCC: 1  (Fiedler value <= node connectivity <= min degree)
+Spectral gap / exact Fiedler value: requires a shift-invert sparse eigensolver
+  (e.g. scipy.sparse.linalg.eigsh(sigma=0)); not available in this compute run.
+Spectral centrality (eigenvector centrality) top nodes:
+  GO:0005515  0.001022
+  EMAPA:16894  0.000598
+  EMAPA:17373  0.000564
+  UBERON:0000992  0.000544
+  UBERON:0000473  0.000543
+  HGNC:31859  0.000541
+  EMAPA:17544  0.000526
+  EMAPA:16728  0.000515
+  EMAPA:16846  0.000514
+  EMAPA:17577  0.000510

@@ -1,0 +1,47 @@
+{
+  "Gene": [
+    "HGNC",
+    "NCBIGENE",
+    "ENSEMBL",
+    "MGI",
+    "RGD",
+    "ZFIN",
+    "XENBASE",
+    "SGD"
+  ],
+
+  "Disease": [
+    "MONDO",
+    "OMIM",
+    "DOID",
+    "UMLS",
+    "MESH"
+  ],
+
+  "Phenotype": [
+    "HP",
+    "MP"
+  ],
+
+  "Chemical": [
+    "CHEBI",
+    "PUBCHEM",
+    "DRUGBANK"
+  ],
+
+  "Variant": [
+    "CLINVAR",
+    "DBSNP",
+    "HGVS"
+  ],
+
+  "Pathway": [
+    "GO",
+    "KEGG"
+  ],
+
+  "Anatomy": [
+    "UBERON",
+    "EMAPA"
+  ]
+}

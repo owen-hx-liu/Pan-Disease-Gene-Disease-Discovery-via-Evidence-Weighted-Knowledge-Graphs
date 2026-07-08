@@ -1,0 +1,91 @@
+dataset_id,possible_gene_ids,possible_disease_ids,possible_phenotype_ids,possible_therapy_ids,possible_protein_ids,possible_compound_ids,possible_variant_ids,possible_pathway_ids,possible_anatomy_ids,possible_taxonomy_ids,example_columns
+CiVIC,Entrez_Gene|HGNC_Symbol,ICD11,NA,NA,PDB,PubChem_CID,NA,NA,NA,NCBITaxon,feature_id(ICD11); feature_id(NCBITaxon); name(HGNC_Symbol); name(ICD11); entrez_id(Entrez_Gene); entrez_id(ICD11); entrez_id(PDB); entrez_id(PubChem_CID); entrez_id(NCBITaxon)
+CiVIC2,Entrez_Gene|HGNC_Symbol,ICD11|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"variant_id(ICD11); variant_id(NCBITaxon); feature_id(Entrez_Gene); feature_id(ICD11); feature_id(PubChem_CID,RxCUI); feature_id(NCBITaxon); feature_name(HGNC_Symbol); feature_name(ICD11); variant(HGNC_Symbol); variant(ICD11); variant_aliases(HGNC_Symbol); variant_aliases(ICD11)"
+CiVIC3,Entrez_Gene|HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,molecular_profile_id(ICD11); molecular_profile_id(NCBITaxon); variant_ids(ICD11); variant_ids(NCBITaxon); evidence_item_ids(Entrez_Gene); evidence_item_ids(ICD11); evidence_item_ids(NCBITaxon); assertion_ids(ICD11); assertion_ids(NCBITaxon); aliases(HGNC_Symbol); aliases(ICD11)
+CiVIC4,Entrez_Gene,ICD11|SNOMED,NA,NA,PDB,PubChem_CID,NA,NA,NA,NCBITaxon,"molecular_profile_id(ICD11); molecular_profile_id(NCBITaxon); doid(ICD11); doid(Entrez_Gene); doid(PDB); doid(PubChem_CID); doid(NCBITaxon); citation_id(Entrez_Gene); citation_id(SNOMED,ICD11); citation_id(PubChem_CID); rating(NCBITaxon); evidence_id(ICD11); evidence_id(NCBITaxon)"
+CiVIC5,NA,ICD11,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,variant_group_id(ICD11); variant_group_id(NCBITaxon)
+CiVIC6,Entrez_Gene,ICD11|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"molecular_profile_id(Entrez_Gene); molecular_profile_id(ICD11); molecular_profile_id(PDB); molecular_profile_id(PubChem_CID); molecular_profile_id(NCBITaxon); doid(SNOMED,ICD11); doid(Entrez_Gene); doid(PDB); doid(PubChem_CID,RxCUI); doid(NCBITaxon); assertion_id(ICD11); assertion_id(NCBITaxon)"
+ClinGPX2,Entrez_Gene|HGNC_Symbol,ICD11|OMIM|SNOMED,NA,NA,PDB,InChI|PubChem_CID|RxCUI|SMILES,NA,NA,NA,NCBITaxon,SMILES(SMILES); InChI(InChI); Clinical Annotation Count(NCBITaxon); Variant Annotation Count(NCBITaxon); Pathway Count(NCBITaxon)
+ClinGPX3,Ensembl_Gene|Entrez_Gene|HGNC|HGNC_Symbol,ICD11|OMIM|SNOMED,NA,NA,NA,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"PharmGKB Accession Id(HGNC_Symbol); PharmGKB Accession Id(ICD11); NCBI Gene ID(NCBITaxon); NCBI Gene ID(Entrez_Gene); NCBI Gene ID(SNOMED,ICD11,OMIM); NCBI Gene ID(PubChem_CID,RxCUI); HGNC ID(HGNC); Ensembl Id(Ensembl_Gene); Symbol(HGNC_Symbol); Symbol(ICD11)"
+ClinGPX4,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NA,PharmGKB Accession Id(HGNC_Symbol); PharmGKB Accession Id(ICD11)
+ClinGPX5,HGNC_Symbol,ICD11,NA,NA,NA,SMILES,dbSNP,NA,NA,NCBITaxon,Variant Name(dbSNP); Variant Name(SMILES); Gene IDs(HGNC_Symbol); Gene IDs(ICD11); Gene Symbols(HGNC_Symbol); Gene Symbols(ICD11); Variant Annotation count(NCBITaxon); Clinical Annotation count(NCBITaxon)
+ClinPGX,Entrez_Gene,ICD11|OMIM|SNOMED,NA,NA,NA,InChI|PubChem_CID|RxCUI|SMILES,NA,NA,NA,NCBITaxon,SMILES(SMILES); InChI(InChI); Clinical Annotation Count(NCBITaxon); Variant Annotation Count(NCBITaxon); Pathway Count(NCBITaxon)
+DGIDB,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NA,name(HGNC_Symbol); name(ICD11)
+DGIDB2,Entrez_Gene|HGNC_Symbol,ICD11|SNOMED,NA,NA,NA,PubChem_CID,NA,NA,NA,NA,"approved(HGNC_Symbol); approved(ICD11); immunotherapy(HGNC_Symbol); immunotherapy(ICD11); anti_neoplastic(HGNC_Symbol); anti_neoplastic(ICD11); source_db_version(Entrez_Gene); source_db_version(SNOMED,ICD11); source_db_version(PubChem_CID)"
+DGIDB3,HGNC_Symbol,ICD11,NA,NA,NA,SMILES,NA,NA,NA,NCBITaxon,gene_claim_name(HGNC_Symbol); gene_claim_name(ICD11); gene_name(HGNC_Symbol); gene_name(ICD11); interaction_source_db_name(HGNC_Symbol); interaction_source_db_name(ICD11); interaction_source_db_version(ICD11); interaction_source_db_version(SMILES); interaction_source_db_version(NCBITaxon); interaction_type(HGNC_Symbol); interaction_type(ICD11)
+DGIDB4,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NA,gene_claim_name(HGNC_Symbol); gene_claim_name(ICD11); concept_id(HGNC_Symbol); concept_id(ICD11); gene_name(HGNC_Symbol); gene_name(ICD11)
+DIDA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+DIDA2,HGNC_Symbol,ICD11,NA,NA,UniProt,NA,NA,KEGG_Pathway,NA,NCBITaxon,GENE_NAME(HGNC_Symbol); GENE_NAME(ICD11); CHROMOSOME(ICD11); CHROMOSOME(NCBITaxon); UNIPROT_ACC(UniProt); UNIPROT_ACC(HGNC_Symbol); UNIPROT_ACC(ICD11); KEGG_ID(KEGG_Pathway); KEGG_ID(HGNC_Symbol); KEGG_ID(ICD11); INTACT_ID(HGNC_Symbol); INTACT_ID(ICD11)
+DIDA3,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NA, Schwartz K(HGNC_Symbol);  Schwartz K(ICD11);  we investigated the 3' part of HERG for mutations. METHODS AND RESULTS: New specific primers allowed the amplification of the 3' part of HERG(HGNC_Symbol);  we investigated the 3' part of HERG for mutations. METHODS AND RESULTS: New specific primers allowed the amplification of the 3' part of HERG(ICD11);  S818L and V822 M(HGNC_Symbol);  S818L and V822 M(ICD11)
+DIDA4,HGNC_Symbol,ICD11,NA,NA,NA,NA,HGVS,NA,NA,NA,Gene A(HGNC_Symbol); Gene A(ICD11); Allele 1 Gene A cDNA change(HGVS); Allele 2 Gene A cDNA change(HGVS); Gene B(HGNC_Symbol); Gene B(ICD11); Allele 1 Gene B cDNA change(HGVS)
+DIDA5,Entrez_Gene|HGNC_Symbol,ICD11|SNOMED,NA,NA,NA,PubChem_CID,HGVS,NA,NA,NCBITaxon,"ID(Entrez_Gene); ID(ICD11); ID(NCBITaxon); Genomic position(Entrez_Gene); Genomic position(SNOMED,ICD11); Genomic position(PubChem_CID); Chromosome(ICD11); Chromosome(NCBITaxon); Ref allele(HGNC_Symbol); Ref allele(ICD11); Gene name(HGNC_Symbol); Gene name(ICD11)"
+DrugCentral,HGNC_Symbol,ICD11,NA,NA,UniProt,NA,NA,NA,NA,NCBITaxon,STRUCT_ID(ICD11); STRUCT_ID(NCBITaxon); ACCESSION(UniProt); ACCESSION(HGNC_Symbol); ACCESSION(ICD11); GENE(HGNC_Symbol); GENE(ICD11); ACT_VALUE(NCBITaxon); ACT_TYPE(HGNC_Symbol); ACT_TYPE(ICD11)
+Gene2Phenotype,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); disease mim(SNOMED,ICD11,OMIM); disease mim(Entrez_Gene); disease mim(PubChem_CID,RxCUI); disease mim(NCBITaxon)"
+Gene2Phenotype2,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); previous gene symbols(HGNC_Symbol); previous gene symbols(ICD11)"
+Gene2Phenotype3,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); previous gene symbols(HGNC_Symbol); previous gene symbols(ICD11)"
+Gene2Phenotype4,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); previous gene symbols(HGNC_Symbol); previous gene symbols(ICD11)"
+Gene2Phenotype5,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); previous gene symbols(HGNC_Symbol)"
+Gene2Phenotype6,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); previous gene symbols(HGNC_Symbol); previous gene symbols(ICD11)"
+Gene2Phenotype7,Entrez_Gene|HGNC_Symbol,ICD11|MONDO|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI,NA,NA,NA,NCBITaxon,"g2p id(HGNC_Symbol); g2p id(ICD11); gene symbol(HGNC_Symbol); gene symbol(ICD11); gene mim(Entrez_Gene); gene mim(SNOMED,ICD11,OMIM); gene mim(PubChem_CID,RxCUI); gene mim(NCBITaxon); hgnc id(Entrez_Gene); hgnc id(ICD11); hgnc id(PDB); hgnc id(PubChem_CID,RxCUI); hgnc id(NCBITaxon); previous gene symbols(HGNC_Symbol); previous gene symbols(ICD11)"
+GWAS,Ensembl_Gene|Entrez_Gene|HGNC_Symbol,ICD11|OMIM|SNOMED,NA,NA,PDB,PubChem_CID|RxCUI|SMILES,dbSNP,NA,NA,NCBITaxon,"DATE ADDED TO CATALOG(SMILES); PUBMEDID(Entrez_Gene); PUBMEDID(SNOMED,ICD11); PUBMEDID(PubChem_CID); DATE(SMILES); REPLICATION SAMPLE SIZE(HGNC_Symbol); REPLICATION SAMPLE SIZE(ICD11); CHR_ID(ICD11); CHR_ID(NCBITaxon)"
+LNCipedia,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+LncRNADisease,Entrez_Gene|HGNC_Symbol,ICD11|SNOMED,NA,NA,NA,PubChem_CID,NA,NA,NA,NA,"ncRNA Symbol(HGNC_Symbol); ncRNA Symbol(ICD11); PubMed ID(Entrez_Gene); PubMed ID(SNOMED,ICD11); PubMed ID(PubChem_CID)"
+Monarch,HGNC|HGNC_Symbol,ICD11|MONDO,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject(HGNC); subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); object(MONDO)
+Monarch10,HGNC|HGNC_Symbol|MGI|RGD,ICD11,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,"subject(RGD,HGNC,MGI); subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); subject_taxon_label(NCBITaxon); object_label(HGNC_Symbol); object_label(ICD11)"
+Monarch11,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); subject_taxon_label(NCBITaxon)
+Monarch12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject_taxon(NCBITaxon)
+Monarch13,MGI,MONDO,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject(MGI); subject_taxon(NCBITaxon); object(MONDO)
+Monarch14,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,GO,NA,NCBITaxon,subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); subject_taxon_label(NCBITaxon); object(GO)
+Monarch15,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,GO,NA,NCBITaxon,subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); subject_taxon_label(NCBITaxon); object(GO)
+Monarch16,HGNC_Symbol,ICD11,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); object_label(HGNC_Symbol); object_label(ICD11); object_taxon(NCBITaxon)
+Monarch17,NA,MONDO,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject_taxon(NCBITaxon); object(MONDO)
+Monarch18,MGI,NA,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject(MGI); subject_taxon(NCBITaxon); object(MGI)
+Monarch19,MGI,NA,MP,NA,NA,NA,NA,NA,NA,NCBITaxon,subject(MGI); subject_taxon(NCBITaxon); object(MP)
+Monarch2,NA,NA,HPO,MAXO,NA,NA,NA,NA,NA,NA,subject(MAXO); object(HPO)
+Monarch3,NA,MONDO,NA,NA,NA,ChEBI,NA,NA,NA,NA,subject(ChEBI); object(MONDO)
+Monarch4,NA,NA,NA,NA,NA,ChEBI,NA,NA,NA,NA,subject(ChEBI)
+Monarch5,HGNC|HGNC_Symbol,ICD11|MONDO,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject(HGNC); subject_label(HGNC_Symbol); subject_label(ICD11); subject_taxon(NCBITaxon); object(MONDO)
+Monarch6,NA,MONDO,HPO,NA,NA,NA,NA,NA,NA,NA,subject(MONDO); object(HPO)
+Monarch7,NA,MONDO,NA,NA,NA,NA,NA,NA,UBERON,NA,subject(MONDO); object(UBERON)
+Monarch8,NA,MONDO,HPO,NA,NA,NA,NA,NA,NA,NA,subject(MONDO); object(HPO)
+Monarch9,MGI,NA,NA,NA,NA,NA,NA,NA,NA,NCBITaxon,subject(MGI); subject_taxon(NCBITaxon); subject_taxon_label(NCBITaxon)
+Orphadata,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata10,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata13,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata14,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata15,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata16,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata17,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata18,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata19,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata2,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata20,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata21,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata22,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata23,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata24,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata25,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata26,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata27,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata28,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata29,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata3,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata30,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata31,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata32,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata33,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata34,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata35,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata36,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata37,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata38,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata39,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata4,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata40,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata5,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata6,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata7,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata8,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+Orphadata9,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA

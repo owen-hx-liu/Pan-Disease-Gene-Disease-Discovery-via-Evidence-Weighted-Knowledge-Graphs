@@ -1,0 +1,32 @@
+{
+  "method": "Louvain local-moving, resolution=1 (corrected CSR)",
+  "num_communities": 11471,
+  "modularity": 0.45738,
+  "largest_community_size": 94009,
+  "largest_fraction": 0.2136,
+  "communities_ge100": 201,
+  "communities_ge10": 1892,
+  "singletons": 290,
+  "top20_sizes": [
+    94009,
+    82421,
+    30252,
+    18724,
+    17824,
+    14911,
+    7017,
+    6814,
+    6223,
+    5386,
+    4892,
+    4689,
+    4374,
+    3900,
+    2844,
+    2756,
+    2724,
+    2343,
+    2258,
+    2200
+  ]
+}

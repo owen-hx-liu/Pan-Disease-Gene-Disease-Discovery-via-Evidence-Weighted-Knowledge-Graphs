@@ -1,0 +1,32 @@
+{
+  "total_edges": 5860539,
+  "distinct_confidence_values": 14,
+  "max_single_value_share": 0.9837076419080224,
+  "support_level_counts": {
+    "1": 5855667,
+    "2": 4788,
+    "3": 84
+  },
+  "multi_source_edges": 4872,
+  "reliability_priors": {
+    "Monarch": 0.8,
+    "Gene2Phenotype": 0.85,
+    "Orphadata": 0.8,
+    "CiVIC": 0.85,
+    "DGIdb": 0.7,
+    "DrugCentral": 0.75,
+    "GWAS": 0.65,
+    "DIDA": 0.75,
+    "_default": 0.7
+  },
+  "sensitivity_spearman_low_weights": 0.9999999999999998,
+  "sensitivity_spearman_high_weights": 0.9999999999999998,
+  "confidence_quantiles": {
+    "0.5": 0.8,
+    "0.9": 0.8,
+    "0.99": 0.8
+  }
+}
+
+wrote C:\Users\owenh\Downloads\ScienceFairYear2\data\processed\consensus\edge_confidence_summary.json and top_corroborated_edges.csv
+top corroborated edges: 4872

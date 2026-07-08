@@ -1,0 +1,3 @@
+model,head_cov_%,tail_cov_%,both_cov_%,both_rows
+TransE,1.671,7.405,0.111,72
+Hybrid,0.0,4.109,0.0,0

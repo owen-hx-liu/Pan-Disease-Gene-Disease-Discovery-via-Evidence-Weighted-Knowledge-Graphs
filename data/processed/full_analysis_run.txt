@@ -1,0 +1,13 @@
+[keep_awake] system sleep suppressed for this run
+[14:21:30] loading data/processed/edges_clean_integrated.csv
+[14:22:05] graph: 452,012 nodes / 5,583,381 edges
+[14:22:06] degree done; top hub GO:0005515 (20641)
+[14:22:16] components done; LCC 440,863 (0.97533)
+[14:22:26] clustering done
+[14:22:26] pagerank...
+[14:22:43] pagerank done
+[14:22:43] building LCC sparse Laplacian...
+[14:23:41] spectral done: {'lcc_nodes': 440863, 'lcc_edges': 5577081, 'lcc_fraction': 0.97533, 'min_degree_lcc': 1, 'largest_laplacian_eigenvalue': 20642.006, 'fiedler_value': 0.039802, 'smallest_eigenvalue': -0.0}
+[14:23:41] louvain communities (slow)...
+[14:30:05] communities done: Q=0.48333, k=5149
+[14:30:05] wrote report -> full_graph_analysis_integrated\full_graph_analysis_report.md

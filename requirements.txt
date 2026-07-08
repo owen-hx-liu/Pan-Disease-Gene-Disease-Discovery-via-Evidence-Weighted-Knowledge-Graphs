@@ -1,0 +1,19 @@
+# Python 3.12. Pinned to the versions used for the 2026-06-18 results.
+#
+# PyTorch must match your CUDA. The benchmark was run on an RTX 5070 (Blackwell,
+# sm_120) which needs CUDA 12.8+ wheels:
+#   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
+# For CPU-only, drop the index-url and the +cu128 build tag.
+torch==2.11.0
+pykeen==1.11.1
+networkx==3.6.1
+pandas==3.0.3
+numpy==2.4.6
+scipy==1.17.1
+scikit-learn==1.9.0
+matplotlib==3.10.9
+tqdm==4.67.3
+
+# Optional: only needed for specific scripts
+# biopython        # FASTA parsing in pipeline.py / step3-5.py (LNCipedia)
+# neo4j            # drugrepurposing.py / druganalysis.py (Neo4j workflow)

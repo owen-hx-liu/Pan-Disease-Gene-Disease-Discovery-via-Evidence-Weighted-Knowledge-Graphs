@@ -1,0 +1,11 @@
+[keep_awake] system sleep suppressed for this run
+[15:10:17] loaded 5860539 unique non-self-loop triples
+[15:10:18] RANDOM split: train=4688433 valid=586053 test=586053
+[15:10:18] building shared classification eval sets (n_pos=10000, neg/pos=1, modes=['random', 'type'])
+[15:10:31] baselines: building train graph (networkx)...
+[15:10:55]   CommonNeighbors: {'AUROC_random': 0.873, 'AUPRC_random': 0.961, 'AUROC_type': 0.87, 'AUPRC_type': 0.955, 'MRR': 0.651, 'Hits@1': 0.522, 'Hits@3': 0.736, 'Hits@10': 0.826}
+[15:11:03]   AdamicAdar: {'AUROC_random': 0.878, 'AUPRC_random': 0.963, 'AUROC_type': 0.874, 'AUPRC_type': 0.956, 'MRR': 0.694, 'Hits@1': 0.598, 'Hits@3': 0.768, 'Hits@10': 0.827}
+[15:11:03]   Random: {'AUROC_random': 0.5, 'AUPRC_random': 0.5, 'AUROC_type': 0.505, 'AUPRC_type': 0.505, 'MRR': 0.091, 'Hits@1': 0.021, 'Hits@3': 0.061, 'Hits@10': 0.199}
+[15:11:09] KGE device = cuda
+[15:11:26] === training TransE (dim=128, epochs=100, bs=16384) ===
+[15:25:04]   trained in 815s

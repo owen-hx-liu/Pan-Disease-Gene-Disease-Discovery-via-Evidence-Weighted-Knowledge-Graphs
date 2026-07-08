@@ -1,0 +1,7 @@
+strategy,n_keys,alias_collisions
+raw,5000,0
+upper_raw,5000,0
+canonical,5000,0
+canonical_upper,5000,0
+prefix_last,5000,0
+last_segment,4844,144

@@ -1,0 +1,8 @@
+{
+  "lcc_nodes": 428520,
+  "lcc_edges": 5487821,
+  "lcc_fraction": 0.9735,
+  "largest_laplacian_eigenvalue": 20642.006,
+  "min_degree_lcc": 1,
+  "fiedler_note": "exact value needs ARPACK shift-invert; 0<Fiedler<=min_degree"
+}

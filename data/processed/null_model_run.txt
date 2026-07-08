@@ -1,0 +1,16 @@
+[15:05:24] loading graph from data/processed/edges_clean_integrated.csv
+[15:05:50] graph: 452,012 nodes / 5,583,381 edges
+[15:05:50] computing observed metrics...
+[15:06:13] observed: {'avg_clustering_sampled': 0.16926065796485865, 'degree_assortativity': -0.07356887742726863, 'giant_component_frac': 0.9753347256267533}
+[15:06:51]   null 1/5: {'avg_clustering_sampled': 0.019043639518303485, 'degree_assortativity': -0.040028887187874236, 'giant_component_frac': 0.9921550755289683}  (37s)
+[15:07:28]   null 2/5: {'avg_clustering_sampled': 0.015894969292540508, 'degree_assortativity': -0.0401328429915869, 'giant_component_frac': 0.9921683495128448}  (37s)
+[15:08:10]   null 3/5: {'avg_clustering_sampled': 0.016882835901710646, 'degree_assortativity': -0.04005773515632171, 'giant_component_frac': 0.992126315230569}  (42s)
+[15:08:51]   null 4/5: {'avg_clustering_sampled': 0.0193128289445919, 'degree_assortativity': -0.03990031590353727, 'giant_component_frac': 0.992374096262931}  (41s)
+[15:09:32]   null 5/5: {'avg_clustering_sampled': 0.017554420973486605, 'degree_assortativity': -0.039682376786398806, 'giant_component_frac': 0.9920798562870012}  (41s)
+[15:09:32] wrote data/processed/null_model_report.json
+
+| Metric | Observed | Null mean | Null sd | z |
+|---|---|---|---|---|
+| avg_clustering_sampled | 0.1693 | 0.0177 | 0.0013 | 117.28 |
+| degree_assortativity | -0.0736 | -0.0400 | 0.0002 | -212.72 |
+| giant_component_frac | 0.9753 | 0.9922 | 0.0001 | -166.25 |

@@ -1,0 +1,38 @@
+[keep_awake] system sleep suppressed for this run
+[15:10:19] loading data/processed/edges_clean_integrated.csv
+[15:10:36] graph: 452,012 nodes / 5,583,381 edges
+[15:10:36] scoring Adamic-Adar for 34,614 HGNC gene heads (hub-cap deg<=2000)
+[15:11:47]   2000/34614 genes; heap=1000
+[15:12:59]   4000/34614 genes; heap=1000
+[15:13:58]   6000/34614 genes; heap=1000
+[15:14:45]   8000/34614 genes; heap=1000
+[15:15:30]   10000/34614 genes; heap=1000
+[15:16:16]   12000/34614 genes; heap=1000
+[15:17:00]   14000/34614 genes; heap=1000
+[15:17:39]   16000/34614 genes; heap=1000
+[15:18:09]   18000/34614 genes; heap=1000
+[15:18:27]   20000/34614 genes; heap=1000
+[15:18:30]   22000/34614 genes; heap=1000
+[15:18:31]   24000/34614 genes; heap=1000
+[15:18:31]   26000/34614 genes; heap=1000
+[15:18:32]   28000/34614 genes; heap=1000
+[15:18:32]   30000/34614 genes; heap=1000
+[15:18:32]   32000/34614 genes; heap=1000
+[15:18:32]   34000/34614 genes; heap=1000
+[15:18:32] wrote 1000 filtered novel gene->disease predictions -> C:\Users\owenh\Downloads\ScienceFairYear2\data\processed\predictions\adamic_adar_gene_disease.csv
+ rank       gene       disease  adamic_adar  n_shared_neighbors
+    1  HGNC:4195 MONDO:0015967     738.6599                 512
+    2 HGNC:11621 MONDO:0015967     660.8228                 461
+    3  HGNC:5024 MONDO:0015967     334.7052                 232
+    4 HGNC:10295 MONDO:0100437     308.7367                 214
+    5 HGNC:10294 MONDO:0100368     240.9301                 167
+    6  HGNC:3097 MONDO:0015152     228.3236                 159
+    7  HGNC:5391 MONDO:0001586     164.6788                 132
+    8  HGNC:6138 MONDO:0010119     145.0401                 126
+    9   HGNC:795 MONDO:0700270     141.6579                 110
+   10  HGNC:7610 MONDO:0007665     131.2852                  91
+   11  HGNC:7577 MONDO:0005045     124.8624                  89
+   12  HGNC:6156 MONDO:0010119      89.5662                  76
+   13  HGNC:4689 MONDO:0100453      75.0201                  52
+   14  HGNC:2597 MONDO:0800472      72.1348                  50
+   15  HGNC:1078 MONDO:0015924      71.1205                  60
