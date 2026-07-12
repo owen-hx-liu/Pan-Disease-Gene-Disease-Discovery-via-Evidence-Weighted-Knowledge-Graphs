@@ -7,9 +7,19 @@
 
 8371ce0f2f837e68a7926ef86a3a3e2421b6ebadcc1d7f3b61dde17f0072cab5  360549016  5860540  data/processed/edges_clean_integrated.csv
 
-# --- splits (added by Machine C once scripts/build_deleaked_splits.py has run) ---
-# <sha256>  <bytes>  <lines>  data/processed/splits/train.csv
-# <sha256>  <bytes>  <lines>  data/processed/splits/valid.csv
-# <sha256>  <bytes>  <lines>  data/processed/splits/test.csv
-# <sha256>  <bytes>  <lines>  data/processed/splits/test_R2_orthology_blocked.csv
-# ... (R0-R3 variants)
+# --- splits (build_deleaked_splits.py, seed 42, run 2026-07-10) ---
+# authoritative copy also lives in data/processed/splits/split_manifest.json
+cd6bd2d7b823dfa32d765a0c17df7a584cc9fd32f2d5e265e6a0946318118068  291362073  5852084  data/processed/splits/train.csv
+e750e85c34ad2be2cd04cb755378bbd508931b39e0dd5436ba8446b4a6e75c32     273110     4229  data/processed/splits/valid.csv
+1565a5191803b5d6fe1e197093b60c79ab84880e0f2ebd6166c55ea5c650a9e1     273075     4229  data/processed/splits/test.csv
+0dbe3509904d3f84991d36c171ad7caf1cae5bf74d89577c1753a31df7f7f4e6  261276261  5331886  data/processed/splits/train_R2_orthology_blocked.csv
+1565a5191803b5d6fe1e197093b60c79ab84880e0f2ebd6166c55ea5c650a9e1     273075     4229  data/processed/splits/test_R3_deleaked.csv
+cbd534d89ecd8f54898a0db119f1b6c50d5d7a1f2c7bb68336f6c64f7ed38700       4453      245  data/processed/splits/hub_nodes.txt
+bf820b9ebd3a3ddde12501e40ea96c2f6e11fb90bf42237227fae606e59a7451    8671382   451923  data/processed/splits/node_degree.csv
+# NOTE: test.csv and test_R3_deleaked.csv share a hash -- expected: the R3 tautology
+# filter is skipped until mondo_labels.tsv exists (Unit 9), so R3 test == R0 test for now.
+# Re-run build_deleaked_splits.py with --disease-labels once you have them, then re-hash.
+
+# --- Hetionet v1.0 robustness graph (downloaded 2026-07-11) ---
+fa1188de70bad1c86e4797a400e53df24131df31856cc4191d862a9daf2d85ca  91228255  2250198  data/external/hetionet/hetionet-v1.0-edges.sif
+3ad9eb86c031df8bc7d5efefa6edc93562182eb9a6a71e5129d3f18b9d42c50e  2509984  47032  data/external/hetionet/hetionet-v1.0-nodes.tsv

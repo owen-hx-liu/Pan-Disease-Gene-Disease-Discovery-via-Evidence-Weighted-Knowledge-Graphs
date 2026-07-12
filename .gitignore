@@ -1,5 +1,6 @@
 # ---- large data (regenerate via the pipeline; do not commit ~7GB of dumps) ----
 data/raw/
+data/external/
 data/processed/*.csv
 data/processed/*.pkl
 data/processed/benchmark*/
