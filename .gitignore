@@ -38,6 +38,7 @@ Thumbs.db
 # ---- generated output subfolders (large; distributed via the data channel) ----
 data/processed/splits/
 data/processed/results/
+!data/processed/results/**/*.json
 data/processed/predictions/
 data/processed/validation/
 data/processed/benchmark_integrated/

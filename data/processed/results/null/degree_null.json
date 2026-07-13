@@ -1,0 +1,184 @@
+{
+  "created": "2026-07-12 22:24:06",
+  "description": "R2 degree-preserving, type-preserving permutation null of the R0 training graph; baselines re-scored with the R0 evaluation held fixed.",
+  "seed": 42,
+  "eval_seed": 42,
+  "n_replicates": 10,
+  "swap_multiplier": 10,
+  "n_neg": 50,
+  "hub_cap": 2000,
+  "splits_dir": "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits",
+  "r0_train_file": "train.csv",
+  "r0_test_file": "test.csv",
+  "n_train_edges": 5852083,
+  "n_test_edges": 4228,
+  "canonical_R2_file": "train_R2_degree_null_seed42.csv",
+  "replicate_files": [
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep0.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep1.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep2.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep3.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep4.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep5.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep6.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep7.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep8.csv",
+    "/Users/weihua/Desktop/ScienceFairYear2/data/processed/splits/null/degree_null_rep9.csv"
+  ],
+  "eval_protocol": "pools/known/negatives(seed) built once from R0; only the scoring adjacency changes per replicate.",
+  "degree_sequence_preserved": true,
+  "methods": {
+    "Random": {
+      "real_R0_MRR": 0.09366614888280696,
+      "real_R0_metrics": {
+        "MRR": 0.09366614888280696,
+        "Hits@1": 0.02459791863765374,
+        "Hits@3": 0.06244087038789026,
+        "Hits@10": 0.1979659413434248,
+        "n": 4228
+      },
+      "null_MRR_mean": 0.09366614888280697,
+      "null_MRR_sd": 1.4628472785736255e-17,
+      "null_MRR_per_rep": [
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696,
+        0.09366614888280696
+      ],
+      "real_minus_null_mean": -1.3877787807814457e-17,
+      "p_value": 1.0,
+      "p_value_plus_one": 1.0,
+      "n_null_ge_real": 10,
+      "structure_beyond_degree": false
+    },
+    "CommonNeighbors": {
+      "real_R0_MRR": 0.44129751222628116,
+      "real_R0_metrics": {
+        "MRR": 0.44129751222628116,
+        "Hits@1": 0.3573793755912961,
+        "Hits@3": 0.4607379375591296,
+        "Hits@10": 0.5215231788079471,
+        "n": 4228
+      },
+      "null_MRR_mean": 0.24934037917852106,
+      "null_MRR_sd": 0.0031730794757352,
+      "null_MRR_per_rep": [
+        0.25159020361719847,
+        0.24675121959320367,
+        0.25324599760917516,
+        0.2502655601188251,
+        0.24794062250123627,
+        0.2510567595470809,
+        0.24621830602151024,
+        0.25078081796149093,
+        0.2523117850769131,
+        0.2432425197385767
+      ],
+      "real_minus_null_mean": 0.1919571330477601,
+      "p_value": 0.0,
+      "p_value_plus_one": 0.09090909090909091,
+      "n_null_ge_real": 0,
+      "structure_beyond_degree": true
+    },
+    "AdamicAdar": {
+      "real_R0_MRR": 0.4582034923659713,
+      "real_R0_metrics": {
+        "MRR": 0.4582034923659713,
+        "Hits@1": 0.3954588457899716,
+        "Hits@3": 0.4728003784295175,
+        "Hits@10": 0.5286187322611163,
+        "n": 4228
+      },
+      "null_MRR_mean": 0.264329582591469,
+      "null_MRR_sd": 0.003687816294999608,
+      "null_MRR_per_rep": [
+        0.2668789236425746,
+        0.26111985817194083,
+        0.2677610270697022,
+        0.26296556067383714,
+        0.2620691271208634,
+        0.26687820988783056,
+        0.2610823776630018,
+        0.26561870070995725,
+        0.27029699454267625,
+        0.2586250464323059
+      ],
+      "real_minus_null_mean": 0.1938739097745023,
+      "p_value": 0.0,
+      "p_value_plus_one": 0.09090909090909091,
+      "n_null_ge_real": 0,
+      "structure_beyond_degree": true
+    },
+    "Jaccard": {
+      "real_R0_MRR": 0.39774921640293126,
+      "real_R0_metrics": {
+        "MRR": 0.39774921640293126,
+        "Hits@1": 0.325922421948912,
+        "Hits@3": 0.4181646168401135,
+        "Hits@10": 0.4728003784295175,
+        "n": 4228
+      },
+      "null_MRR_mean": 0.20191911183827682,
+      "null_MRR_sd": 0.0026017191343013263,
+      "null_MRR_per_rep": [
+        0.20311245307679196,
+        0.20085952833513077,
+        0.20498362672738304,
+        0.19885098216746244,
+        0.20131681771756302,
+        0.1982949981751986,
+        0.20320070728355105,
+        0.2045172722229456,
+        0.20499853698272918,
+        0.19905619569401248
+      ],
+      "real_minus_null_mean": 0.19583010456465444,
+      "p_value": 0.0,
+      "p_value_plus_one": 0.09090909090909091,
+      "n_null_ge_real": 0,
+      "structure_beyond_degree": true
+    },
+    "PreferentialAttachment": {
+      "real_R0_MRR": 0.5886495155898306,
+      "real_R0_metrics": {
+        "MRR": 0.5886495155898306,
+        "Hits@1": 0.4858088930936613,
+        "Hits@3": 0.6350520340586566,
+        "Hits@10": 0.7741248817407758,
+        "n": 4228
+      },
+      "null_MRR_mean": 0.5909834133640431,
+      "null_MRR_sd": 0.00014038507198140194,
+      "null_MRR_per_rep": [
+        0.591153789396285,
+        0.5907411103060906,
+        0.5911088142617207,
+        0.5910118192234931,
+        0.5909856760649909,
+        0.5910191336801355,
+        0.5911591957853102,
+        0.5909427405494684,
+        0.5909140667790767,
+        0.5907977875938598
+      ],
+      "real_minus_null_mean": -0.0023338977742125566,
+      "p_value": 1.0,
+      "p_value_plus_one": 1.0,
+      "n_null_ge_real": 10,
+      "structure_beyond_degree": false
+    }
+  },
+  "pa_sanity": {
+    "real": 0.5886495155898306,
+    "null_mean": 0.5909834133640431,
+    "abs_diff": 0.0023338977742125566,
+    "tol": 0.05,
+    "pass": true
+  }
+}
