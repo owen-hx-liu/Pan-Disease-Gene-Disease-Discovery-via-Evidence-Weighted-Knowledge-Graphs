@@ -55,3 +55,6 @@ fullgraph_*.png
 /transe_embeddings.csv
 # never commit raw dumps under any nesting (belt-and-suspenders with data/raw/ above)
 **/data.raw.*
+
+# ---- external third-party graphs (Hetionet etc.); consumed from the data channel, never committed ----
+data/external/
