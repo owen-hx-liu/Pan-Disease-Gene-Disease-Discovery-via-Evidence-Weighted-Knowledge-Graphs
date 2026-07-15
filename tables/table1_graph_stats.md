@@ -1,0 +1,16 @@
+### Table 1. Graph statistics
+
+| Property | Monarch (this work) | Hetionet v1.0 (robustness) |
+|---|---|---|
+| Nodes | 452,012 | 47,031 |
+| Edges (directed) | 5,860,539 | 2,250,197 |
+| Edges (unique undirected) | 5,583,381 | 2,107,709 |
+| Node categories / metanodes | 8 | 11 |
+| Relation / metaedge types | 28 | 24 |
+| Degree mean | 25.9 | 99.7 |
+| Degree median | 2 | 32 |
+| Degree max | 20,662 | 23,879 |
+| Gene nodes | 336,460 | 19,145 |
+| Disease nodes | 14,339 | 136 |
+| Gene–disease target edges | 42,288 | 12,623 |
+| Orthology edges | 510,703 | 0 (single-species) |

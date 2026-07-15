@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Cross-graph robustness: the same audit rerun unmodified on Hetionet (DaG task; mean $\pm$ SD over 3 seeds). Hetionet has no cross-species orthology, so R3 is omitted. The R0$\to$R2 degree-null drop reproduces the Monarch pattern on an independent graph.}
+\label{tab:hetionet}
+\begin{tabular}{lrrrr}
+\toprule
+Method & MRR R0 & MRR R1 & MRR R2 & $\Delta$MRR R0$\to$R2 \\
+\midrule
+Random & 0.092 $\pm$ 0.001 & 0.092 $\pm$ 0.001 & 0.092 $\pm$ 0.001 & +0\% \\
+CommonNeighbors & 0.269 $\pm$ 0.003 & 0.268 $\pm$ 0.002 & 0.173 $\pm$ 0.001 & -35\% \\
+AdamicAdar & 0.285 $\pm$ 0.005 & 0.284 $\pm$ 0.004 & 0.178 $\pm$ 0.002 & -37\% \\
+Jaccard & 0.162 $\pm$ 0.002 & 0.162 $\pm$ 0.001 & 0.104 $\pm$ 0.001 & -36\% \\
+PreferentialAttachment & 0.231 $\pm$ 0.002 & 0.231 $\pm$ 0.002 & 0.231 $\pm$ 0.002 & -0\% \\
+\bottomrule
+\end{tabular}
+\end{table}

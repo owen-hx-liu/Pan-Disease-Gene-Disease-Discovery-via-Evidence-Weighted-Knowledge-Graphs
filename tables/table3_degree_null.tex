@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Degree-null decomposition of R0 ranking performance (10 degree-preserving, type-preserving permutation replicates; R0 evaluation held fixed). The structure column is the residual above what pure node degree explains; the permutation p-value is the fraction of null replicates with MRR $\geq$ the real R0 MRR. Degree sequence preserved: True. PreferentialAttachment sanity: real 0.589 vs null 0.591 (unchanged $\to$ the null preserves the degree sequence).}
+\label{tab:degree_null}
+\begin{tabular}{lrrrrr}
+\toprule
+Method & Real R0 MRR & Degree-null MRR & Structure (real$-$null) & Perm. p & Structure > degree? \\
+\midrule
+CommonNeighbors & 0.441 & 0.249 $\pm$ 0.003 & +0.192 & <0.001 & yes \\
+AdamicAdar & 0.458 & 0.264 $\pm$ 0.004 & +0.194 & <0.001 & yes \\
+Jaccard & 0.398 & 0.202 $\pm$ 0.003 & +0.196 & <0.001 & yes \\
+PreferentialAttachment & 0.589 & 0.591 $\pm$ 0.000 & -0.002 & 1.000 & no \\
+Random & 0.094 & 0.094 $\pm$ 0.000 & -0.000 & 1.000 & no \\
+\bottomrule
+\end{tabular}
+\end{table}
