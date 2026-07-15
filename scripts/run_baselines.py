@@ -56,23 +56,56 @@ def log(m):
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
 
-def build_adjacency(train_edges):
-    """Undirected neighbor sets + degree from a (N,3) edge array (relation ignored)."""
+def make_progress(tag, min_interval=1.0, width=24):
+    """Return a ``cb(done, total)`` that prints a wall-clock-throttled progress bar.
+
+    Line-based (not an in-place ``\\r`` bar) so it renders live when the log is tailed
+    even with the job backgrounded -- matching run_kge.py's bar. Emits at most one line
+    per ``min_interval`` seconds, always emitting the final (done == total) tick.
+    """
+    state = {"t0": time.time(), "last": 0.0}
+
+    def cb(done, total):
+        now = time.time()
+        if now - state["last"] < min_interval and done < total:
+            return
+        state["last"] = now
+        frac = done / max(total, 1)
+        fill = int(round(width * frac))
+        bar = "#" * fill + "-" * (width - fill)
+        el = now - state["t0"]
+        eta = (el / frac - el) if frac > 0 else float("nan")
+        log(f"    [{tag}] [{bar}] {frac * 100:5.1f}% {done}/{total} "
+            f"elapsed={el:.0f}s eta={eta:.0f}s")
+
+    return cb
+
+
+def build_adjacency(train_edges, progress=None):
+    """Undirected neighbor sets + degree from a (N,3) edge array (relation ignored).
+
+    ``progress`` (optional ``cb(done, total)``) draws a live bar over the multi-million
+    edge Python loop -- the single longest opaque step for the big regimes (R0/R2)."""
     adj = {}
     src = train_edges[:, 0]
     tgt = train_edges[:, 2]
-    for a, b in zip(src.tolist(), tgt.tolist()):
-        if a == b:
-            continue
-        s = adj.get(a)
-        if s is None:
-            adj[a] = s = set()
-        s.add(b)
-        s = adj.get(b)
-        if s is None:
-            adj[b] = s = set()
-        s.add(a)
-    deg = {n: len(nb) for n, nb in adj.items()}
+    n = len(src)
+    step = max(1, n // 40)          # ~40 progress ticks over the whole build
+    for i, (a, b) in enumerate(zip(src.tolist(), tgt.tolist())):
+        if a != b:
+            s = adj.get(a)
+            if s is None:
+                adj[a] = s = set()
+            s.add(b)
+            s = adj.get(b)
+            if s is None:
+                adj[b] = s = set()
+            s.add(a)
+        if progress is not None and i % step == 0:
+            progress(i + 1, n)
+    if progress is not None:
+        progress(n, n)
+    deg = {n_: len(nb) for n_, nb in adj.items()}
     return adj, deg
 
 
@@ -167,7 +200,7 @@ def main():
         train, test, hubs = reg
         log(f"building adjacency over {len(train):,} train edges ...")
         t0 = time.time()
-        adj, deg = build_adjacency(train)
+        adj, deg = build_adjacency(train, progress=make_progress(f"{regime} adjacency"))
         log(f"  {len(adj):,} nodes in adjacency ({time.time() - t0:.1f}s)")
         t0 = time.time()
         pools = lib_eval._category_pools(train, hubs)      # once per regime
@@ -184,7 +217,8 @@ def main():
                 ranks, pos, neg = lib_eval.rank_test_edges(
                     fn, train, test, hubs, reg.hub_filter,
                     n_neg=args.n_neg, seed=seed, return_scores=True,
-                    pools=pools, known=known)
+                    pools=pools, known=known,
+                    progress=make_progress(f"{regime} s{seed} {name}"))
                 rm = lib_eval.ranking_metrics(ranks)
                 cm = lib_eval.classification_metrics(pos, neg)
                 rec = results.setdefault(name, {k: [] for k in

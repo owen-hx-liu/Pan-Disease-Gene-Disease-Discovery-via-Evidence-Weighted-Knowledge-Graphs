@@ -30,6 +30,11 @@ PREFIX_CATEGORY_MAP = {
     "VGNC":"gene",
     "WB":"gene",
     "XENBASE":"gene",
+    # model-organism gene databases (FlyBase, dictyBase, SGD, PomBase)
+    "FB":"gene",
+    "DICTYBASE":"gene",
+    "SGD":"gene",
+    "POMBASE":"gene",
 
     # ===== DISEASES =====
     "MONDO":"disease",
@@ -46,6 +51,11 @@ PREFIX_CATEGORY_MAP = {
     "HP":"phenotype",
     "MP":"phenotype",
     "ZP":"phenotype",
+    # model-organism phenotype ontologies
+    "FYPO":"phenotype",        # fission yeast
+    "WBPHENOTYPE":"phenotype", # worm
+    "XPO":"phenotype",         # Xenopus
+    "DDPHENO":"phenotype",     # Dictyostelium
 
     # ===== THERAPIES =====
     "MAXO":"therapy",
@@ -67,6 +77,7 @@ PREFIX_CATEGORY_MAP = {
     "KEGG":"compound",
     "CAS":"compound",
     "RXCUI":"compound",
+    "DRUGCENTRAL":"compound",
 
     # ===== VARIANTS =====
     "DBSNP":"variant",
@@ -88,6 +99,11 @@ PREFIX_CATEGORY_MAP = {
     "UBERON":"anatomy",
     "FMA":"anatomy",
     "CL":"anatomy",
+    # model-organism anatomy ontologies
+    "EMAPA":"anatomy", # mouse
+    "FBBT":"anatomy",  # fly
+    "WBBT":"anatomy",  # worm
+    "ZFA":"anatomy",   # zebrafish
 
     # ===== TAXONOMY =====
     "NCBITAXON":"taxonomy"

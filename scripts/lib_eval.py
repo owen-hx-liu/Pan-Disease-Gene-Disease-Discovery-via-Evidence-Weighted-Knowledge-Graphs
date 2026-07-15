@@ -275,7 +275,8 @@ def _known_tails_by_head(train_edges, test_edges, heads_of_interest) -> dict:
 
 
 def rank_test_edges(score_fn, train_edges, test_edges, hub_set, hub_filter,
-                    n_neg=50, seed=42, return_scores=False, pools=None, known=None):
+                    n_neg=50, seed=42, return_scores=False, pools=None, known=None,
+                    progress=None):
     """Rank each held-out true disease against n_neg type-matched negatives.
 
     Parameters
@@ -290,6 +291,10 @@ def rank_test_edges(score_fn, train_edges, test_edges, hub_set, hub_filter,
                  hub-blocking is done inside score_fn by the caller).
     n_neg : negatives per test edge (default 50 -> 51-way ranking, chance MRR ~0.089).
     seed : RNG seed for negative sampling (default 42).
+    progress : optional callable ``progress(done, total)`` invoked once per ranked
+               test edge (plus a final call). Lets a caller draw a live progress bar
+               over the otherwise-opaque ranking loop; it must self-throttle. None
+               (default) keeps the loop silent -- backward compatible.
 
     Returns
     -------
@@ -326,6 +331,10 @@ def rank_test_edges(score_fn, train_edges, test_edges, hub_set, hub_filter,
         if return_scores:
             pos_out[i] = true_s
             neg_out.append(neg_s)
+        if progress is not None:
+            progress(i + 1, len(test_edges))
+    if progress is not None:
+        progress(len(test_edges), len(test_edges))
     if return_scores:
         neg_cat = np.concatenate(neg_out) if neg_out else np.array([], dtype=float)
         return ranks, pos_out, neg_cat

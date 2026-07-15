@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-build_deleaked_splits.py -- THE BACKBONE of the leakage-aware benchmark.
+build_deleaked_splits.py -- THE BACKBONE of the leakage-audit benchmark.
 
-Builds the fixed train/valid/test splits and the leakage-blocked graph variants that
+Builds the fixed train/valid/test splits and the leakage-controlled graph variants that
 EVERY downstream method (baselines on Machine B, KGE on Machine A) must consume, so
-all methods are evaluated on byte-identical held-out edges. See PAPER_SCOPE.md.
+all methods are evaluated on byte-identical held-out edges. See plan_audit/PAPER_SCOPE.md.
 
 Prediction task: human gene -> disease
     head  = HGNC:*                     (human gene)
@@ -14,26 +14,38 @@ Prediction task: human gene -> disease
 We hold out a random 10%/10% of these target edges as valid/test; everything else
 (all non-target edges + the remaining 80% of target edges) is the training graph.
 
-Four evaluation REGIMES are supported by the files this script emits (the regimes
-themselves are applied by the eval harness, lib_eval.py):
+Four AUDIT REGIMES are supported by the files this script emits (the regimes themselves
+are applied by the eval harness, lib_eval.py). Under the leakage-audit plan the regimes
+are graded controls -- each removes one leakage source:
 
-    R0 Standard         train = train.csv                       test = test.csv
-    R1 Hub-controlled   train = train.csv                       test = test.csv   + exclude hub_nodes.txt at scoring time
-    R2 Orthology-blocked train = train_R2_orthology_blocked.csv test = test.csv
-    R3 De-leaked        train = train_R2_orthology_blocked.csv  test = test_R3_deleaked.csv + exclude hub_nodes.txt
+    R0 Standard              train = train.csv                     test = test.csv
+    R1 Redundancy-controlled train = train_R1_redundancy.csv       test = test.csv
+    R2 Degree-controlled     train = train_R2_degree_null_seed42.csv test = test.csv   <- built by Unit 7
+    R3 Orthology-blocked     train = train_R3_orthology_blocked.csv test = test.csv
 
-R2 removes the cross-species bridges (ORTHOLOGOUS_TO, MODEL_OF by default) so a human
-gene->disease edge can no longer be recovered through a mouse/fish ortholog's phenotype
-profile. --strict-ortho additionally drops non-human gene HAS_PHENOTYPE edges.
+    R1 removes any *direct* edge in train between a held-out gene and its held-out
+       disease (either direction, any relation): the exact reverse of the target, a
+       duplicate association under another relation name, or a symmetric restatement --
+       all trivially leak the held-out pair (OpenBioLink-style redundancy control).
+    R2 is a degree-preserving permutation null; that file is NOT written here -- it is
+       produced by Unit 7 (build_degree_null.py) from train.csv + node_degree.csv.
+    R3 removes the cross-species bridges (ORTHOLOGOUS_TO, MODEL_OF by default) so a human
+       gene->disease edge can no longer be recovered through a mouse/fish ortholog's
+       phenotype profile. --strict-ortho also drops non-human gene HAS_PHENOTYPE edges.
+
+Optional test cleaning (not a regime): if gene/disease labels are supplied, we also emit
+test_tautology_filtered.csv = test.csv minus eponymous/obsolete pairs, usable as a
+robustness check across all regimes.
 
 Outputs (data/processed/splits/ by default):
-    train.csv                        R0/R1 training graph  (source_id,relation,target_id)
+    train.csv                        R0 training graph  (source_id,relation,target_id)
     valid.csv                        held-out target edges for KGE early stopping
     test.csv                         held-out target edges  = the ranking targets
-    train_R2_orthology_blocked.csv   R2/R3 training graph
-    test_R3_deleaked.csv             test.csv minus eponymous/obsolete (if labels given)
-    hub_nodes.txt                    nodes with degree > --hub-degree (for R1/R3)
-    node_degree.csv                  node,degree over the R0 training graph
+    train_R1_redundancy.csv          R1 training graph (direct held-pair edges removed)
+    train_R3_orthology_blocked.csv   R3 training graph (orthology/model-organism removed)
+    test_tautology_filtered.csv      optional cleaned test (needs labels; else == test.csv)
+    hub_nodes.txt                    nodes with degree > --hub-degree (graph stats / diagnostics)
+    node_degree.csv                  node,degree over the R0 training graph (feeds the R2 null)
     split_manifest.json              seed, counts, regime defs, sha256 of every output
 
 Deterministic: fixed --seed (default 42). Pure pandas/numpy -- no networkx/torch, so
@@ -44,7 +56,7 @@ Usage:
     python scripts/build_deleaked_splits.py --dry-run  # compute + print counts, write nothing
     python scripts/build_deleaked_splits.py \
         --gene-symbols data/registry/hgnc_complete_set.txt \
-        --disease-labels data/registry/mondo_labels.tsv    # enables R3 tautology filter
+        --disease-labels data/registry/mondo_labels.tsv    # enables tautology test cleaning
 """
 import argparse
 import hashlib
@@ -74,6 +86,19 @@ def log(m):
 def rel_suffix(r):
     """'BIOLINK:GENE_ASSOCIATED_WITH_CONDITION' -> 'GENE_ASSOCIATED_WITH_CONDITION'."""
     return r.split(":", 1)[1] if ":" in r else r
+
+
+def _pair_keys(a, b):
+    """Canonical, order-independent node-pair keys for two ID columns.
+
+    _pair_keys(['g','d'], ['d','g']) -> both map to the same 'd\\x01g' key, so an edge
+    and its reverse collide. Used to detect direct edges between held-out endpoints.
+    """
+    a = np.asarray(a, dtype=str)
+    b = np.asarray(b, dtype=str)
+    lo = np.where(a <= b, a, b)
+    hi = np.where(a <= b, b, a)
+    return np.char.add(np.char.add(lo, "\x01"), hi)
 
 
 def sha256(path):
@@ -136,15 +161,15 @@ def main():
     ap.add_argument("--head-prefix", default="HGNC",
                     help="restrict the gene side to this (human) namespace")
     ap.add_argument("--block-relations", default="ORTHOLOGOUS_TO,MODEL_OF",
-                    help="relation suffixes removed in the R2 orthology-blocked graph")
+                    help="relation suffixes removed in the R3 orthology-blocked graph")
     ap.add_argument("--strict-ortho", action="store_true",
-                    help="also drop non-human gene HAS_PHENOTYPE edges in R2")
+                    help="also drop non-human gene HAS_PHENOTYPE edges in R3")
     ap.add_argument("--hub-degree", type=int, default=2000,
-                    help="nodes with train-graph degree above this are hubs (R1/R3)")
+                    help="nodes with train-graph degree above this are hubs (diagnostics)")
     ap.add_argument("--gene-symbols", default=None,
-                    help="HGNC complete-set TSV (hgnc_id, symbol) -> enables R3 tautology filter")
+                    help="HGNC complete-set TSV (hgnc_id, symbol) -> enables tautology filter")
     ap.add_argument("--disease-labels", default=None,
-                    help="TSV 'mondo_id<TAB>label' -> enables R3 tautology/obsolete filter")
+                    help="TSV 'mondo_id<TAB>label' -> enables tautology/obsolete filter")
     ap.add_argument("--dry-run", action="store_true",
                     help="compute and print counts but write no files")
     args = ap.parse_args()
@@ -187,27 +212,39 @@ def main():
                        .itertuples(index=False, name=None))) & held_keys) == 0, \
         "LEAK: held-out edge found in train"
 
-    # -- R2 orthology-blocked training graph -------------------------------- #
+    # -- R1 redundancy-controlled training graph ---------------------------- #
+    # Drop any DIRECT train edge between a held-out gene and its held-out disease
+    # (either direction, any relation): reverse-of-target, duplicate association, or
+    # symmetric restatement -- all trivially leak the held-out pair.
+    held_pairs = pd.concat([test, valid], ignore_index=True)
+    held_pair_keys = set(_pair_keys(held_pairs["source_id"], held_pairs["target_id"]).tolist())
+    train_pair_keys = _pair_keys(train["source_id"], train["target_id"])
+    redundant = np.isin(train_pair_keys, list(held_pair_keys))
+    train_r1 = train[~redundant].reset_index(drop=True)
+    log(f"R1 redundancy-controlled graph: {len(train_r1):,} edges "
+        f"(removed {int(redundant.sum()):,} direct held-pair edges, any relation/direction)")
+
+    # -- R3 orthology-blocked training graph (Monarch-only leakage) --------- #
     rel_suf = train["relation"].map(lambda r: rel_suffix(r).upper())
     block = rel_suf.isin(block_relations)
     if args.strict_ortho:
         nonhuman_gene = (train["source_id"].str.split(":", n=1).str[0].str.upper() != "HGNC") \
             & train["source_id"].map(lambda s: category_of(s) == "gene")
         block = block | (rel_suf.eq("HAS_PHENOTYPE") & nonhuman_gene)
-    train_r2 = train[~block].reset_index(drop=True)
-    log(f"R2 orthology-blocked graph: {len(train_r2):,} edges "
+    train_r3 = train[~block].reset_index(drop=True)
+    log(f"R3 orthology-blocked graph: {len(train_r3):,} edges "
         f"(removed {int(block.sum()):,}: {sorted(block_relations)}"
         f"{' + non-human HAS_PHENOTYPE' if args.strict_ortho else ''})")
 
-    # -- degrees + hubs over the R0 training graph -------------------------- #
+    # -- degrees + hubs over the R0 training graph (feeds the R2 null) ------- #
     deg = (pd.concat([train["source_id"], train["target_id"]])
            .value_counts())
     hubs = deg[deg > args.hub_degree]
     log(f"degree: {len(deg):,} nodes; {len(hubs):,} hubs (deg > {args.hub_degree})")
 
-    # -- R3 test set: drop eponymous / obsolete (needs labels) -------------- #
-    r3_note = "labels not provided -- R3 test == R0 test (tautology filter SKIPPED)"
-    test_r3 = test.copy()
+    # -- optional tautology-cleaned test set (needs labels; not a regime) ---- #
+    taut_note = "labels not provided -- test_tautology_filtered == test (filter SKIPPED)"
+    test_taut = test.copy()
     n_epo = n_obs = 0
     if args.gene_symbols and args.disease_labels:
         sym = pd.read_csv(args.gene_symbols, sep="\t", dtype=str,
@@ -221,14 +258,15 @@ def main():
         obs = d_lab.fillna("").str.upper().str.startswith("OBSOLETE")
         epo = pd.Series([eponymous(a, b) for a, b in zip(g_sym, d_lab)], index=test.index)
         n_epo, n_obs = int(epo.sum()), int(obs.sum())
-        test_r3 = test[~(epo | obs)].reset_index(drop=True)
-        r3_note = f"removed {n_epo} eponymous + {n_obs} obsolete -> {len(test_r3)} kept"
-    log(f"R3 test set: {r3_note}")
+        test_taut = test[~(epo | obs)].reset_index(drop=True)
+        taut_note = f"removed {n_epo} eponymous + {n_obs} obsolete -> {len(test_taut)} kept"
+    log(f"tautology-cleaned test: {taut_note}")
 
     # -- manifest ----------------------------------------------------------- #
     manifest = {
         "created": time.strftime("%Y-%m-%d %H:%M:%S"),
         "seed": args.seed,
+        "plan": "leakage-audit (R0 standard / R1 redundancy / R2 degree-null / R3 orthology)",
         "edges_source": args.edges,
         "task": {
             "head_prefix": args.head_prefix,
@@ -238,19 +276,34 @@ def main():
         },
         "counts": {
             "train": len(train), "valid": len(valid), "test": len(test),
-            "train_R2_orthology_blocked": len(train_r2),
-            "removed_for_R2": int(block.sum()),
+            "train_R1_redundancy": len(train_r1),
+            "removed_for_R1": int(redundant.sum()),
+            "train_R3_orthology_blocked": len(train_r3),
+            "removed_for_R3": int(block.sum()),
             "hub_nodes": len(hubs),
-            "test_R3_deleaked": len(test_r3),
-            "R3_removed_eponymous": n_epo, "R3_removed_obsolete": n_obs,
+            "test_tautology_filtered": len(test_taut),
+            "removed_eponymous": n_epo, "removed_obsolete": n_obs,
         },
         "regimes": {
-            "R0_standard": {"train": "train.csv", "test": "test.csv", "hub_filter": False},
-            "R1_hub_controlled": {"train": "train.csv", "test": "test.csv", "hub_filter": True},
-            "R2_orthology_blocked": {"train": "train_R2_orthology_blocked.csv",
-                                     "test": "test.csv", "hub_filter": False},
-            "R3_deleaked": {"train": "train_R2_orthology_blocked.csv",
-                            "test": "test_R3_deleaked.csv", "hub_filter": True},
+            "R0_standard": {
+                "train": "train.csv", "test": "test.csv", "hub_filter": False,
+                "desc": "random split, full training graph (inflated reference)",
+            },
+            "R1_redundancy_controlled": {
+                "train": "train_R1_redundancy.csv", "test": "test.csv", "hub_filter": False,
+                "desc": "remove direct held-pair edges (inverse/duplicate/symmetric)",
+            },
+            "R2_degree_controlled": {
+                "train": "train_R2_degree_null_seed42.csv", "test": "test.csv",
+                "hub_filter": False,
+                "desc": "degree-preserving permutation null (attributes perf to degree)",
+                "produced_by": "Unit 7 build_degree_null.py -- NOT written by this script",
+            },
+            "R3_orthology_blocked": {
+                "train": "train_R3_orthology_blocked.csv", "test": "test.csv",
+                "hub_filter": False,
+                "desc": "remove ORTHOLOGOUS_TO + MODEL_OF (Monarch-only orthology leakage)",
+            },
         },
         "params": {
             "block_relations": sorted(block_relations),
@@ -271,8 +324,9 @@ def main():
         "train.csv": train,
         "valid.csv": valid,
         "test.csv": test,
-        "train_R2_orthology_blocked.csv": train_r2,
-        "test_R3_deleaked.csv": test_r3,
+        "train_R1_redundancy.csv": train_r1,
+        "train_R3_orthology_blocked.csv": train_r3,
+        "test_tautology_filtered.csv": test_taut,
     }
     hashes = {}
     for name, frame in writes.items():
@@ -288,10 +342,10 @@ def main():
     manifest["sha256"] = hashes
     with open(out / "split_manifest.json", "w") as f:
         json.dump(manifest, f, indent=2)
-    log(f"wrote split_manifest.json")
-    log("DONE. Add these sha256 to ARTIFACT_HASHES.txt and upload the split files to the "
-        "shared data channel so Machines A and B use byte-identical inputs.")
-    print(json.dumps({k: manifest["counts"][k] for k in manifest["counts"]}, indent=2))
+    log("wrote split_manifest.json")
+    log("DONE. R2 degree-null graph is built later by Unit 7. Add these sha256 to "
+        "ARTIFACT_HASHES.txt and upload the split files to the shared data channel.")
+    print(json.dumps(manifest["counts"], indent=2))
 
 
 if __name__ == "__main__":

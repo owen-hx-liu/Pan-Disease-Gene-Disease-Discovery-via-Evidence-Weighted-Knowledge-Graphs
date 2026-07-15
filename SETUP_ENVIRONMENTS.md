@@ -36,14 +36,19 @@ Decide which physical computer is A, B, C and write it in `PROGRESS.md`.
 This is your current Windows machine. You're publishing the code + setting up the data channel
 so B and C can join.
 
-**A1. Make sure your latest code is on GitHub.**
+**A1. Push the cleaned code to GitHub.**
+> History was rebuilt on 2026-07-07 to remove ~2.5 GB of `data/raw/` dumps that had been
+> committed by mistake (a single 649 MB file was blocking every push with HTTP 408). The local
+> repo is now a clean single commit on branch **`main`** (code + docs only, ~30 MB). The remote
+> `main` still holds the old raw-data web-uploads, so the first push must **force-replace** it:
 ```powershell
 cd "C:\Users\owenh\Downloads\ScienceFairYear2"
-git add -A
-git commit -m "Add roadmap, scope, setup docs"
-git push origin master
+git push -u origin main --force     # ONE-TIME: replaces the polluted remote history
 ```
-`[mac/linux]` same commands (no `.exe` differences here).
+After this first force-push, all later pushes are normal `git push` (never force again).
+Your raw data is untouched on disk — it lives on the data channel (A2), never in git.
+NEVER `git add` anything under `data/raw/` again; `.gitignore` now blocks it, but don't force it.
+`[mac/linux]` same commands.
 
 **A2. Create the shared DATA channel** (git can't hold the 360 MB graph). Pick ONE:
 - **Google Drive (simplest):** make a folder named `SciencePaper-DATA`, right-click → Share →
@@ -98,9 +103,14 @@ git config --global user.name  "Your Name"
 git config --global user.email "your-github-email@example.com"
 ```
 
-### Step 4 — Clone the repo
+### Step 4 — Clone the repo (into a NON-OneDrive folder — this matters)
+> ⚠️ **Do NOT clone into `Documents` or `Desktop`.** On Windows 11 those are redirected into
+> OneDrive, and OneDrive breaks Python virtual environments (it locks/virtualizes files while
+> `venv` is writing them → `Unable to create directory ...\Scripts\Activate.ps1`). Use a plain
+> local folder like `C:\dev`. `Downloads` is also fine (it is not OneDrive-synced).
 ```powershell
-cd "$HOME\Documents"
+New-Item -ItemType Directory -Force C:\dev | Out-Null
+cd C:\dev
 git clone https://github.com/owen-hx-liu/Pan-Disease-Gene-Disease-Discovery-via-Evidence-Weighted-Knowledge-Graphs.git ScienceFairYear2
 cd ScienceFairYear2
 ```
@@ -108,10 +118,12 @@ cd ScienceFairYear2
   a Personal Access Token (GitHub → Settings → Developer settings → Tokens → *classic*, scope
   `repo`) and paste it as the password.
 - **Machine A only:** you already have the repo at `C:\Users\owenh\Downloads\ScienceFairYear2`
-  — just `cd` there instead of cloning.
+  (not under OneDrive — good). Just `cd` there instead of cloning.
 
-### Step 5 — Make and activate a virtual environment
+### Step 5 — Make and activate a virtual environment (inside the project folder)
 ```powershell
+# if an old venv already exists in the project (Machine A does), remove it first:
+if (Test-Path venv) { Remove-Item -Recurse -Force venv }
 py -3.12 -m venv venv
 .\venv\Scripts\Activate.ps1
 ```
@@ -119,6 +131,8 @@ py -3.12 -m venv venv
   ```powershell
   Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
   ```
+- If you still get `Unable to create directory ...Activate.ps1`, the folder is OneDrive-synced —
+  move the whole project to `C:\dev\ScienceFairYear2` and try again. Never build a venv in OneDrive.
 - `[mac/linux]` `python3.12 -m venv venv && source venv/bin/activate`
 
 **Verify:** your prompt now starts with `(venv)`.

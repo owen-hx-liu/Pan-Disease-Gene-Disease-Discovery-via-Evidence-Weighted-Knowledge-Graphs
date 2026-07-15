@@ -12,12 +12,17 @@ PREFIX_CATEGORY_MAP = {
     "HGNC": "gene", "NCBIGENE": "gene", "ENTREZGENE": "gene", "ENSEMBL": "gene",
     "ENSG": "gene", "MGI": "gene", "RGD": "gene", "ZFIN": "gene", "FBGN": "gene",
     "VGNC": "gene", "WB": "gene", "XENBASE": "gene",
+    # genes -- model-organism databases (FlyBase, dictyBase, SGD, PomBase)
+    "FB": "gene", "DICTYBASE": "gene", "SGD": "gene", "POMBASE": "gene",
     # diseases
     "MONDO": "disease", "DOID": "disease", "OMIM": "disease", "ORPHA": "disease",
     "ORPHANET": "disease", "SNOMEDCT": "disease", "UMLS": "disease",
     "MESH": "disease", "EFO": "disease",
-    # phenotypes
+    # phenotypes (incl. model-organism phenotype ontologies:
+    # FYPO=fission yeast, WBPhenotype=worm, XPO=Xenopus, DDPHENO=Dictyostelium)
     "HP": "phenotype", "MP": "phenotype", "ZP": "phenotype",
+    "FYPO": "phenotype", "WBPHENOTYPE": "phenotype", "XPO": "phenotype",
+    "DDPHENO": "phenotype",
     # therapies
     "MAXO": "therapy",
     # proteins
@@ -26,15 +31,17 @@ PREFIX_CATEGORY_MAP = {
     # compounds / drugs
     "CHEBI": "compound", "DRUGBANK": "compound", "CHEMBL": "compound",
     "PUBCHEM": "compound", "CID": "compound", "KEGG": "compound", "CAS": "compound",
-    "RXCUI": "compound",
+    "RXCUI": "compound", "DRUGCENTRAL": "compound",
     # variants
     "DBSNP": "variant", "RS": "variant", "CLINVAR": "variant", "COSMIC": "variant",
     "HGVS": "variant", "CAID": "variant", "GNOMAD": "variant",
     # pathways
     "REACTOME": "pathway", "WP": "pathway", "WIKIPATHWAYS": "pathway",
     "GO": "pathway", "KEGG.PATHWAY": "pathway",
-    # anatomy
+    # anatomy (incl. model-organism anatomy ontologies:
+    # EMAPA=mouse, FBbt=fly, WBbt=worm, ZFA=zebrafish)
     "UBERON": "anatomy", "FMA": "anatomy", "CL": "anatomy",
+    "EMAPA": "anatomy", "FBBT": "anatomy", "WBBT": "anatomy", "ZFA": "anatomy",
     # taxonomy
     "NCBITAXON": "taxonomy",
 }
