@@ -39,6 +39,7 @@ Thumbs.db
 # ---- generated output subfolders (large; distributed via the data channel) ----
 data/processed/splits/
 data/processed/results/
+!data/processed/results/**/*.json
 data/processed/predictions/
 data/processed/validation/
 data/processed/benchmark_integrated/
@@ -55,3 +56,6 @@ fullgraph_*.png
 /transe_embeddings.csv
 # never commit raw dumps under any nesting (belt-and-suspenders with data/raw/ above)
 **/data.raw.*
+
+# ---- external third-party graphs (Hetionet etc.); consumed from the data channel, never committed ----
+data/external/

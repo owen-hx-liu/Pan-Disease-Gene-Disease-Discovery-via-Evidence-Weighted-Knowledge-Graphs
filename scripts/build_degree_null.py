@@ -1,42 +1,71 @@
 #!/usr/bin/env python3
 """
-build_degree_null.py -- Unit 7: the R2 degree-preserving null training graph.
+build_degree_null.py -- R2 degree-preserving, TYPE-preserving permutation null of
+the R0 training graph, for the leakage audit (Unit 7, Machine B).
 
-Writes data/processed/splits/train_R2_degree_null_seed<seed>.csv: a randomized copy of
-the R0 training graph (train.csv) in which every node's in- and out-degree is preserved
-EXACTLY, per relation, while the specific head->tail wiring is destroyed. Training a model
-on this null and evaluating it on the REAL held-out test edges isolates how much of a
-method's score is explained by degree structure alone -- the R0 - R2 drop is the signal
-that is NOT attributable to degree. (On this task pure PreferentialAttachment already
-scores MRR ~0.59, so degree carries a lot; R2 is the control that quantifies it.)
+WHY
+---
+The leakage audit decomposes each method's R0 ranking performance into "how much is
+pure node degree" vs "how much is real topological structure". This script builds the
+degree null: it randomizes the training graph's wiring while holding every node's degree
+exactly fixed, then re-scores the topological baselines on it under the SAME evaluation
+protocol used for R0. A method whose R0 signal was really just degree collapses toward
+its null here; a method that used genuine structure keeps a gap above the null.
 
-Method -- per-relation directed double-edge swap (Maslov & Sneppen 2002):
-    For two edges (h1, r, t1) and (h2, r, t2) of the SAME relation r, propose
-    (h1, r, t2) and (h2, r, t1); accept iff it makes no self-loop and no parallel edge.
-    Only tail endpoints are permuted among a relation's edges, so the head multiset is
-    untouched (head out-degree preserved) and the tail multiset is a permutation (tail
-    in-degree preserved) -- degrees are preserved by construction, exactly, and the
-    relation-type histogram is identical to R0. ~--swaps-per-edge x |E_r| swaps per
-    relation give good mixing.
+WHAT MAKES THIS CORRECT (the gotchas)
+-------------------------------------
+* TYPE-preserving swaps, NOT a global rewire. A naive rewire of the whole graph would
+  connect a gene to a gene where a gene->disease edge used to be -- nonsense, and it
+  would change the degree *composition* seen by the relation-agnostic scorers. We rewire
+  WITHIN each relation type separately (Hetionet-XSwap / Gu-et-al. style). Each relation
+  subgraph is built DIRECTED (source->target), so directed double-edge swaps preserve
+  every node's per-relation out- and in-degree and can never cross a relation boundary or
+  flip a source/target (gene/disease) role. Total per-node degree is therefore identical.
+* Preserve exactly the right thing (assert it). After swapping we assert the per-node
+  degree sequence over the whole recombined graph is byte-identical to the original and
+  that per-relation edge counts are unchanged. A degree null with a changed degree
+  sequence is a bug (CLAUDE.md).
+* Hold the evaluation FIXED for a clean permutation test. Negatives, category pools and
+  the known-tail exclusions are built ONCE from R0 (lib_eval._category_pools /
+  _known_tails_by_head) and the R0 test edges + seed=42 are reused for every replicate.
+  The ONLY thing that changes per replicate is the scoring adjacency, so any change in MRR
+  is attributable to the wiring alone.
+* Sanity anchor. PreferentialAttachment reads only degree, which the null preserves, so
+  its null MRR must ~= its R0 MRR. If PA moves materially, the swap changed degrees (bug);
+  we assert this.
 
-Only the TRAINING graph is randomized; valid.csv / test.csv are untouched, so the held-out
-target edges are unchanged. The seed is fixed and split_manifest.json is updated with the
-new file's edge count + sha256 so the split set stays reproducible.
+INPUT
+-----
+    data/processed/splits/train.csv   (source_id,relation,target_id)  -- the R0 train graph
+    data/processed/splits/test.csv    -- ranking targets (via lib_eval.load_regime("R0"))
 
-Live progress: a line-based bar (a fresh line at most every --progress-secs seconds) over
-total swap attempts, with accept-rate + ETA. It is line-based on purpose so it renders when
-the log is tailed (Get-Content <log> -Wait) even under a backgrounded run.
+OUTPUT
+------
+    data/processed/splits/train_R2_degree_null_seed42.csv    first replicate; fixed name so
+                                                             lib_eval's R2 regime + `run_baselines
+                                                             --regimes R2` resolve to it.
+    data/processed/splits/null/degree_null_rep<k>.csv        every replicate (k=0..N-1).
+    data/processed/results/null/degree_null.json             per method: real R0 MRR, mean null
+                                                             MRR, per-replicate null MRRs, and a
+                                                             permutation p-value.
+
+RUNTIME PREREQUISITES (this is Machine B's heavy job)
+-----------------------------------------------------
+Needs python-igraph + numpy + pandas, plus scripts/lib_eval.py and scripts/run_baselines.py
+on the path and the R0 split files on disk. It CANNOT run in the no-package analysis sandbox
+(no igraph); run it on the box that holds the splits. `--self-test` validates the swap
+invariants on a tiny synthetic graph and needs no split files.
 
 Usage:
-    python scripts/build_degree_null.py                          # full build, seed 42
-    python scripts/build_degree_null.py --swaps-per-edge 10
-    python scripts/build_degree_null.py --limit-relations 3 --dry-run   # fast calibration
+    python scripts/build_degree_null.py                     # 10 replicates, seed 42
+    python scripts/build_degree_null.py --replicates 20
+    python scripts/build_degree_null.py --self-test         # fast, file-free invariant check
 """
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
+import random
 import time
 from pathlib import Path
 
@@ -44,198 +73,369 @@ import numpy as np
 import pandas as pd
 
 try:
+    import igraph as ig
+except ImportError as _e:  # pragma: no cover - environment guard
+    raise SystemExit(
+        "build_degree_null.py requires python-igraph (`pip install python-igraph`). "
+        f"Import failed: {_e}")
+
+try:
+    import lib_eval
+    import run_baselines
+except ImportError:  # allow running from the repo root
+    from scripts import lib_eval, run_baselines
+
+try:
     from config import PROCESSED_DIR
-    SPLITS_DIR = Path(PROCESSED_DIR) / "splits"
+    DEFAULT_SPLITS = Path(PROCESSED_DIR) / "splits"
+    DEFAULT_RESULTS = Path(PROCESSED_DIR) / "results" / "null"
 except Exception:
-    SPLITS_DIR = Path("data/processed/splits")
+    DEFAULT_SPLITS = Path("data/processed/splits")
+    DEFAULT_RESULTS = Path("data/processed/results/null")
+
+# lib_eval.load_regime("R2") and `run_baselines --regimes R2` resolve to this exact
+# filename via split_manifest.json, so the canonical (first) replicate is written here
+# regardless of --seed.
+R2_CANONICAL_NAME = "train_R2_degree_null_seed42.csv"
+COLS = ["source_id", "relation", "target_id"]
 
 
 def log(m):
     print(f"[{time.strftime('%H:%M:%S')}] {m}", flush=True)
 
 
-class Progress:
-    """Line-based, wall-clock-throttled progress bar over swap attempts."""
+# --------------------------------------------------------------------------- #
+# Degree-preserving, type-preserving swap
+# --------------------------------------------------------------------------- #
+def seed_igraph(seed: int) -> None:
+    """Seed igraph's RNG deterministically across python-igraph versions.
 
-    def __init__(self, total, tag="swap", secs=1.0):
-        self.total = max(int(total), 1)
-        self.tag, self.secs = tag, secs
-        self.t0 = time.time()
-        self.last = 0.0
-        self.done = 0
-        self.accepted = 0
-
-    def add(self, k, accepted):
-        self.done += k
-        self.accepted += accepted
-        now = time.time()
-        if now - self.last >= self.secs or self.done >= self.total:
-            self.last = now
-            self._emit()
-
-    def _emit(self):
-        frac = min(max(self.done / self.total, 1e-9), 1.0)
-        el = time.time() - self.t0
-        eta = el / frac - el
-        w = 28
-        fill = int(round(w * frac))
-        bar = "#" * fill + "-" * (w - fill)
-        acc = 100.0 * self.accepted / max(self.done, 1)
-        log(f"[{self.tag}] [{bar}] {frac * 100:5.1f}% "
-            f"swaps {self.done:,}/{self.total:,} accept={acc:4.1f}% "
-            f"elapsed={el:.0f}s eta={eta:.0f}s")
-
-
-def swap_relation(head_ids, tail_ids, n_nodes, n_swaps, rng, prog):
-    """Degree-preserving double-edge swaps on one relation.
-
-    head_ids/tail_ids are int32 arrays (global node ids) for the edges of one relation.
-    Returns a new tails array (heads are never moved). Packs (h, t) -> h*n_nodes + t
-    (fits int64: n_nodes ~ 4.5e5, so h*n_nodes+t < 2e11 << 9.2e18).
+    Newer python-igraph uses its own Mersenne Twister; older versions delegate to
+    Python's ``random``. We seed both routes. Bit-for-bit reproducibility across
+    machines still requires a pinned igraph version (record it in requirements).
     """
-    m = len(head_ids)
-    heads = head_ids
-    tails = tail_ids.copy()
-    if m < 2 or n_swaps <= 0:
-        prog.add(int(n_swaps), 0)
-        return tails, 0
-
-    N = n_nodes
-    edgeset = set((int(h) * N + int(t)) for h, t in zip(heads.tolist(), tails.tolist()))
-    accepted = 0
-    CH = 100_000
-    done = 0
-    while done < n_swaps:
-        k = int(min(CH, n_swaps - done))
-        I = rng.integers(0, m, size=k)
-        J = rng.integers(0, m, size=k)
-        acc_chunk = 0
-        for a in range(k):
-            i = int(I[a]); j = int(J[a])
-            if i == j:
-                continue
-            h1 = int(heads[i]); t1 = int(tails[i])
-            h2 = int(heads[j]); t2 = int(tails[j])
-            if h1 == h2 or t1 == t2:      # degenerate (no-op / guaranteed parallel)
-                continue
-            if h1 == t2 or h2 == t1:      # would create a self-loop
-                continue
-            e1 = h1 * N + t2
-            e2 = h2 * N + t1
-            if e1 in edgeset or e2 in edgeset:   # would create a parallel edge
-                continue
-            edgeset.discard(h1 * N + t1)
-            edgeset.discard(h2 * N + t2)
-            edgeset.add(e1)
-            edgeset.add(e2)
-            tails[i] = t2
-            tails[j] = t1
-            accepted += 1
-            acc_chunk += 1
-        done += k
-        prog.add(k, acc_chunk)
-    return tails, accepted
+    random.seed(seed)
+    setter = getattr(ig, "set_random_number_generator", None)
+    if setter is not None:
+        try:
+            setter(random)
+        except Exception:
+            pass
+    set_seed = getattr(ig, "set_random_seed", None)
+    if set_seed is not None:
+        try:
+            set_seed(seed)
+        except Exception:
+            pass
 
 
+def swap_one_relation(src: np.ndarray, tgt: np.ndarray, swap_mult: int, seed: int):
+    """Degree-preserving double-edge swaps within a single relation.
+
+    ``src``/``tgt`` are aligned object arrays of node IDs for one relation (each row an
+    edge source->target). Builds a DIRECTED simple igraph, runs ~``swap_mult`` * |E|
+    double-edge swaps (mode="simple": no self-loops or parallel edges introduced), and
+    returns the rewired (src, tgt) arrays. Asserts per-node out- and in-degree are
+    identical before/after, which guarantees total degree is preserved and that no edge
+    crossed the source/target (e.g. gene/disease) role -- the type-preservation guarantee.
+    """
+    m = len(src)
+    codes, uniques = pd.factorize(np.concatenate([src, tgt]))
+    src_codes = codes[:m]
+    tgt_codes = codes[m:]
+
+    if m < 2:  # nothing to swap; degree trivially preserved
+        return src.copy(), tgt.copy()
+
+    g = ig.Graph(n=len(uniques),
+                 edges=list(zip(src_codes.tolist(), tgt_codes.tolist())),
+                 directed=True)
+    seed_igraph(seed)
+    # "simple" = never introduce self-loops or parallel edges. The keyword was renamed
+    # mode -> allowed_edge_types in igraph 1.0; try the new name, fall back for older ones.
+    try:
+        g.rewire(n=swap_mult * m, allowed_edge_types="simple")
+    except TypeError:
+        g.rewire(n=swap_mult * m, mode="simple")
+
+    new = np.asarray(g.get_edgelist(), dtype=np.int64)
+    assert len(new) == m, f"rewire changed edge count: {len(new)} != {m}"
+    new_src_codes, new_tgt_codes = new[:, 0], new[:, 1]
+
+    nu = len(uniques)
+    assert np.array_equal(np.bincount(src_codes, minlength=nu),
+                          np.bincount(new_src_codes, minlength=nu)), \
+        "out-degree sequence changed by rewire"
+    assert np.array_equal(np.bincount(tgt_codes, minlength=nu),
+                          np.bincount(new_tgt_codes, minlength=nu)), \
+        "in-degree sequence changed by rewire"
+
+    return uniques[new_src_codes], uniques[new_tgt_codes]
+
+
+def build_replicate(df: pd.DataFrame, swap_mult: int, seed: int) -> pd.DataFrame:
+    """Rewire every relation of ``df`` independently and recombine into one edge list.
+
+    Relations are processed in sorted order for determinism. Asserts, on the recombined
+    graph, that (a) the per-node total-incidence degree sequence equals the original and
+    (b) per-relation edge counts are unchanged -- the correctness guarantees for the null.
+    """
+    parts = []
+    # Deterministic per-relation seed: sorted-relation index folded with the base
+    # seed (NOT Python's built-in hash(), which is per-process randomized). Distinct
+    # relations get independent swaps; the same (seed, relation) always reproduces.
+    for idx, rel in enumerate(sorted(df["relation"].unique())):
+        sub = df[df["relation"] == rel]
+        rel_seed = (seed * 100_003 + idx) % (2**31 - 1)
+        s, t = swap_one_relation(sub["source_id"].to_numpy(),
+                                 sub["target_id"].to_numpy(),
+                                 swap_mult, seed=rel_seed)
+        parts.append(pd.DataFrame({"source_id": s, "relation": rel, "target_id": t}))
+    null_df = pd.concat(parts, ignore_index=True)[COLS]
+
+    orig_deg = pd.concat([df["source_id"], df["target_id"]]).value_counts().sort_index()
+    null_deg = pd.concat([null_df["source_id"], null_df["target_id"]]).value_counts().sort_index()
+    assert orig_deg.equals(null_deg), "degree sequence NOT preserved -- swap bug"
+    assert (df["relation"].value_counts().sort_index()
+            .equals(null_df["relation"].value_counts().sort_index())), \
+        "per-relation edge counts changed -- swap bug"
+    return null_df
+
+
+# --------------------------------------------------------------------------- #
+# Scoring (evaluation held fixed to R0; only the adjacency changes)
+# --------------------------------------------------------------------------- #
+def score_methods(rep_edges, train0, test0, hubs0, pools, known,
+                  methods, n_neg, hub_cap, eval_seed):
+    """Score ``methods`` on a replicate's adjacency, ranking the fixed R0 test edges.
+
+    ``rep_edges`` is the replicate's (N,3) [source,relation,target] array (its wiring is
+    the only thing that varies). pools/known/test0/eval_seed are the R0 evaluation, held
+    fixed and passed straight through to rank_test_edges. Returns method -> ranking_metrics.
+    """
+    adj, deg = run_baselines.build_adjacency(rep_edges)
+    scorers = run_baselines.make_scorers(adj, deg, hub_cap, seed=eval_seed)
+    out = {}
+    for name in methods:
+        fn = scorers[name]
+        ranks = lib_eval.rank_test_edges(
+            fn, train0, test0, hubs0, False,
+            n_neg=n_neg, seed=eval_seed, pools=pools, known=known)
+        out[name] = lib_eval.ranking_metrics(ranks)
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Self-test: swap invariants on a tiny synthetic multi-relation graph (no files)
+# --------------------------------------------------------------------------- #
+def _self_test(swap_mult=10, seed=42):
+    rng = np.random.default_rng(0)
+    genes = [f"HGNC:{i}" for i in range(60)]
+    dis = [f"MONDO:{i:07d}" for i in range(120)]
+
+    rows, seen = [], set()
+    while len(seen) < 400:  # bipartite gene -> disease
+        k = (genes[rng.integers(0, 60)], "BIOLINK:GENE_ASSOCIATED_WITH_CONDITION",
+             dis[rng.integers(0, 120)])
+        if k not in seen:
+            seen.add(k); rows.append(k)
+    while len(seen) < 600:  # symmetric-ish gene <-> gene interactions
+        a, b = genes[rng.integers(0, 60)], genes[rng.integers(0, 60)]
+        if a == b:
+            continue
+        k = (a, "BIOLINK:INTERACTS_WITH", b)
+        if k not in seen:
+            seen.add(k); rows.append(k)
+    df = pd.DataFrame(rows, columns=COLS)
+
+    null_df = build_replicate(df, swap_mult, seed)   # asserts degree + count invariants
+
+    # Type preservation: the bipartite relation stays HGNC -> MONDO after swapping.
+    gd = null_df[null_df["relation"].str.endswith("GENE_ASSOCIATED_WITH_CONDITION")]
+    assert gd["source_id"].str.startswith("HGNC:").all(), "gene->disease source role broken"
+    assert gd["target_id"].str.startswith("MONDO:").all(), "gene->disease target role broken"
+
+    # PA proxy: undirected distinct-neighbour degree (what PreferentialAttachment reads)
+    # must be ~unchanged, so PA's null MRR will track its R0 MRR.
+    _, deg_o = run_baselines.build_adjacency(df[COLS].to_numpy(dtype=object))
+    _, deg_n = run_baselines.build_adjacency(null_df[COLS].to_numpy(dtype=object))
+    drift = max(abs(deg_o[n] - deg_n.get(n, 0)) for n in deg_o)
+    assert drift <= 2, f"distinct-neighbour degree drifted by {drift} (>2) -- unexpected"
+
+    # The wiring must actually change (this is a permutation, not a copy).
+    same = df.merge(null_df, on=COLS, how="inner")
+    log(f"self-test: {len(df):,} edges, {df['relation'].nunique()} relations; "
+        f"{len(same):,}/{len(df):,} edges unchanged; max degree drift={drift}")
+    assert len(same) < len(df), "swap did not change any edge -- rewire is a no-op"
+    log("SELF-TEST PASSED: degree + per-relation counts + type roles preserved; wiring randomized.")
+
+
+# --------------------------------------------------------------------------- #
+# Main
+# --------------------------------------------------------------------------- #
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--splits-dir", default=str(SPLITS_DIR))
-    ap.add_argument("--train", default="train.csv", help="R0 training graph to randomize")
-    ap.add_argument("--seed", type=int, default=42)
-    ap.add_argument("--swaps-per-edge", type=int, default=10,
-                    help="double-edge swap attempts per edge, per relation (mixing)")
-    ap.add_argument("--progress-secs", type=float, default=1.0,
-                    help="emit a progress line at most this often (seconds)")
-    ap.add_argument("--limit-relations", type=int, default=None,
-                    help="only process the N largest relations (fast calibration)")
-    ap.add_argument("--dry-run", action="store_true",
-                    help="swap + verify but write NO file and do NOT touch the manifest")
+    ap.add_argument("--splits-dir", default=str(DEFAULT_SPLITS))
+    ap.add_argument("--out-results", default=str(DEFAULT_RESULTS))
+    ap.add_argument("--replicates", type=int, default=10,
+                    help="number of null replicates for the permutation distribution")
+    ap.add_argument("--seed", type=int, default=42, help="base seed for the swaps")
+    ap.add_argument("--swap-mult", type=int, default=10,
+                    help="double-edge swaps per relation = swap-mult * |E_relation|")
+    ap.add_argument("--n-neg", type=int, default=50, help="negatives per test edge (match R0)")
+    ap.add_argument("--hub-cap", type=int, default=2000, help="CN/AA hub cap (match R0)")
+    ap.add_argument("--methods", default=",".join(run_baselines.METHOD_ORDER))
+    ap.add_argument("--eval-seed", type=int, default=42,
+                    help="FIXED negative-sampling seed reused for every replicate")
+    ap.add_argument("--pa-tol", type=float, default=0.05,
+                    help="max |PA null MRR - PA R0 MRR| before the sanity assert fails")
+    ap.add_argument("--resume", action="store_true",
+                    help="reuse existing replicate CSVs instead of re-running their swaps")
+    ap.add_argument("--self-test", action="store_true",
+                    help="validate swap invariants on a synthetic graph; needs no split files")
     args = ap.parse_args()
-    splits = Path(args.splits_dir)
-    rng = np.random.default_rng(args.seed)
 
-    log(f"loading {args.train} ...")
-    df = pd.read_csv(splits / args.train, usecols=["source_id", "relation", "target_id"], dtype=str)
-    df = df.dropna(subset=["source_id", "relation", "target_id"])
-    n0 = len(df)
-    # Exact-duplicate (h,r,t) rows would corrupt the per-relation edge set; drop them
-    # (a clean split has none). Report so any count change is explicit in the manifest.
-    df = df.drop_duplicates(subset=["source_id", "relation", "target_id"]).reset_index(drop=True)
-    if len(df) != n0:
-        log(f"  dropped {n0 - len(df):,} exact-duplicate triples (kept {len(df):,})")
-
-    # Integer-encode node labels once (shared head/tail id space).
-    nodes = pd.unique(pd.concat([df["source_id"], df["target_id"]], ignore_index=True))
-    id_of = {lbl: i for i, lbl in enumerate(nodes)}
-    n_nodes = len(nodes)
-    label_of = np.asarray(nodes, dtype=object)
-    head_ids = df["source_id"].map(id_of).to_numpy(np.int64)
-    tail_ids = df["target_id"].map(id_of).to_numpy(np.int64)
-    rels = df["relation"].to_numpy(object)
-    log(f"graph: {len(df):,} edges, {n_nodes:,} nodes, {len(np.unique(rels)):,} relations")
-
-    # Order relations by size (largest first); optionally limit for calibration.
-    uniq, counts = np.unique(rels, return_counts=True)
-    order = np.argsort(-counts)
-    uniq, counts = uniq[order], counts[order]
-    if args.limit_relations:
-        uniq, counts = uniq[:args.limit_relations], counts[:args.limit_relations]
-        log(f"  calibration: only the {len(uniq)} largest relation(s)")
-
-    total_swaps = int(sum(args.swaps_per_edge * c for c in counts if c >= 2))
-    prog = Progress(total_swaps, tag="swap", secs=args.progress_secs)
-    log(f"target swaps: {total_swaps:,} ({args.swaps_per_edge}x per edge, per relation)")
-
-    new_tails = tail_ids.copy()
-    total_accepted = 0
-    for rel, c in zip(uniq.tolist(), counts.tolist()):
-        idx = np.nonzero(rels == rel)[0]
-        h = head_ids[idx]
-        t = tail_ids[idx]
-        # guard against pre-existing intra-relation parallels (would break the edge set)
-        if len(idx) != len({(int(a), int(b)) for a, b in zip(h.tolist(), t.tolist())}):
-            log(f"  NOTE relation {rel} has intra-relation parallels; edge set dedups them")
-        swapped, acc = swap_relation(h, t, n_nodes, args.swaps_per_edge * c, rng, prog)
-        new_tails[idx] = swapped
-        total_accepted += acc
-    log(f"done: {total_accepted:,} swaps accepted "
-        f"({100.0 * total_accepted / max(total_swaps, 1):.1f}% of attempts)")
-
-    # Degree preservation is guaranteed by construction (heads are never moved; tails are
-    # only permuted within a relation) -- assert the tail multiset really is a permutation
-    # as a hard sanity check that in-degree is preserved exactly.
-    assert np.array_equal(np.bincount(tail_ids, minlength=n_nodes),
-                          np.bincount(new_tails, minlength=n_nodes)), "tail in-degree changed"
-    # And confirm we actually rewired something (unless a tiny calibration).
-    frac_moved = float(np.mean(tail_ids != new_tails))
-    log(f"verified: in/out degree preserved exactly; {frac_moved * 100:.1f}% of edges rewired")
-
-    if args.dry_run:
-        log("dry-run: no file written, manifest untouched. "
-            f"(extrapolated full build ~ scale by total_edges/processed_edges.)")
+    if args.self_test:
+        _self_test(args.swap_mult, args.seed)
         return
 
-    out_name = f"train_R2_degree_null_seed{args.seed}.csv"
-    out_path = splits / out_name
-    out = pd.DataFrame({
-        "source_id": label_of[head_ids],
-        "relation": rels,
-        "target_id": label_of[new_tails],
-    })
-    out.to_csv(out_path, index=False)
-    sha = hashlib.sha256(out_path.read_bytes()).hexdigest()
-    log(f"wrote {out_path} ({len(out):,} edges)  sha256={sha[:16]}...")
+    methods = [m.strip() for m in args.methods.split(",") if m.strip()]
+    splits_dir = Path(args.splits_dir)
+    null_dir = splits_dir / "null"
+    null_dir.mkdir(parents=True, exist_ok=True)
+    out_results = Path(args.out_results)
+    out_results.mkdir(parents=True, exist_ok=True)
 
-    # Update the manifest: edge count + sha256 (leave everything else intact).
-    man_path = splits / "split_manifest.json"
-    man = json.loads(man_path.read_text())
-    man.setdefault("counts", {})["train_R2_degree_null"] = int(len(out))
-    man.setdefault("sha256", {})[out_name] = sha
-    man.setdefault("params", {})["R2_swaps_per_edge"] = args.swaps_per_edge
-    man.setdefault("params", {})["R2_seed"] = args.seed
-    man_path.write_text(json.dumps(man, indent=2))
-    log(f"updated manifest: counts.train_R2_degree_null={len(out):,}, sha256[{out_name}]")
+    # -- R0: load once; build the fixed evaluation (pools/known) once -------- #
+    reg0 = lib_eval.load_regime("R0", splits_dir)
+    train0, test0, hubs0 = reg0
+    log(f"R0 loaded: train={len(train0):,} test={len(test0):,} "
+        f"(train_file={reg0.train_file}, test_file={reg0.test_file})")
+    t0 = time.time()
+    pools = lib_eval._category_pools(train0, hubs0)
+    known = lib_eval._known_tails_by_head(train0, test0, test0[:, 0])
+    log(f"built fixed category pools + known-tails from R0 ({time.time() - t0:.1f}s)")
+
+    df = pd.DataFrame(train0, columns=COLS)  # exact R0 train graph, for swapping
+
+    # -- real R0 baseline MRRs (same harness/seed as the null) --------------- #
+    log("scoring baselines on the REAL R0 graph ...")
+    real = score_methods(train0, train0, test0, hubs0, pools, known,
+                          methods, args.n_neg, args.hub_cap, args.eval_seed)
+    for name in methods:
+        log(f"  R0 {name:23s} MRR={real[name]['MRR']:.4f} "
+            f"H@10={real[name]['Hits@10']:.4f}")
+
+    # -- replicates: swap -> checkpoint CSV -> score ------------------------- #
+    null_mrr = {name: [] for name in methods}          # method -> [per-rep MRR]
+    null_metrics = {name: [] for name in methods}       # method -> [per-rep full metrics]
+    rep_files = []
+    for k in range(args.replicates):
+        rep_seed = args.seed + k
+        rep_path = null_dir / f"degree_null_rep{k}.csv"
+        if args.resume and rep_path.exists():
+            log(f"[rep {k}] resume: reading {rep_path.name}")
+            rep_edges = lib_eval._load_edges(rep_path)
+        else:
+            t0 = time.time()
+            null_df = build_replicate(df, args.swap_mult, rep_seed)
+            null_df.to_csv(rep_path, index=False)
+            log(f"[rep {k}] swapped + wrote {rep_path.name} "
+                f"({len(null_df):,} edges, {time.time() - t0:.1f}s)")
+            rep_edges = null_df[COLS].to_numpy(dtype=object)
+        rep_files.append(str(rep_path))
+        if k == 0:  # canonical R2 file so lib_eval / run_baselines resolve R2
+            canon = splits_dir / R2_CANONICAL_NAME
+            pd.DataFrame(rep_edges, columns=COLS).to_csv(canon, index=False)
+            log(f"[rep 0] also wrote canonical {canon.name}")
+
+        t0 = time.time()
+        m = score_methods(rep_edges, train0, test0, hubs0, pools, known,
+                          methods, args.n_neg, args.hub_cap, args.eval_seed)
+        for name in methods:
+            null_mrr[name].append(m[name]["MRR"])
+            null_metrics[name].append(m[name])
+        log(f"[rep {k}] scored ({time.time() - t0:.1f}s): "
+            + "  ".join(f"{n}={m[n]['MRR']:.4f}" for n in methods))
+
+    # -- aggregate: permutation p-value per method --------------------------- #
+    N = args.replicates
+    methods_out = {}
+    for name in methods:
+        real_mrr = real[name]["MRR"]
+        nm = np.asarray(null_mrr[name], dtype=float)
+        count_ge = int(np.sum(nm >= real_mrr))
+        methods_out[name] = {
+            "real_R0_MRR": real_mrr,
+            "real_R0_metrics": {k: real[name][k] for k in real[name]},
+            "null_MRR_mean": float(nm.mean()),
+            "null_MRR_sd": float(nm.std(ddof=1)) if N > 1 else 0.0,
+            "null_MRR_per_rep": [float(x) for x in nm],
+            "real_minus_null_mean": float(real_mrr - nm.mean()),
+            # p = fraction of null replicates as good as / better than the real graph.
+            "p_value": count_ge / N,
+            # add-one variant (never reports exactly 0; standard permutation correction).
+            "p_value_plus_one": (1 + count_ge) / (N + 1),
+            "n_null_ge_real": count_ge,
+            "structure_beyond_degree": bool(count_ge / N < 0.05),
+        }
+
+    # -- PA sanity anchor: null MRR must track the R0 MRR -------------------- #
+    pa = methods_out.get("PreferentialAttachment")
+    pa_sanity = None
+    if pa is not None:
+        diff = abs(pa["null_MRR_mean"] - pa["real_R0_MRR"])
+        pa_sanity = {"real": pa["real_R0_MRR"], "null_mean": pa["null_MRR_mean"],
+                     "abs_diff": diff, "tol": args.pa_tol, "pass": bool(diff <= args.pa_tol)}
+        log(f"PA sanity: real={pa['real_R0_MRR']:.4f} null={pa['null_MRR_mean']:.4f} "
+            f"|diff|={diff:.4f} (tol {args.pa_tol})")
+        assert diff <= args.pa_tol, (
+            f"PreferentialAttachment null MRR ({pa['null_MRR_mean']:.4f}) drifted from its "
+            f"R0 MRR ({pa['real_R0_MRR']:.4f}) by {diff:.4f} > tol {args.pa_tol}. PA reads "
+            "only degree, which the null preserves, so this means the swap changed degrees "
+            "-- a bug. Investigate before trusting the other methods' nulls.")
+
+    payload = {
+        "created": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "description": "R2 degree-preserving, type-preserving permutation null of the R0 "
+                       "training graph; baselines re-scored with the R0 evaluation held fixed.",
+        "seed": args.seed,
+        "eval_seed": args.eval_seed,
+        "n_replicates": N,
+        "swap_multiplier": args.swap_mult,
+        "n_neg": args.n_neg,
+        "hub_cap": args.hub_cap,
+        "splits_dir": str(splits_dir),
+        "r0_train_file": reg0.train_file,
+        "r0_test_file": reg0.test_file,
+        "n_train_edges": int(len(train0)),
+        "n_test_edges": int(len(test0)),
+        "canonical_R2_file": R2_CANONICAL_NAME,
+        "replicate_files": rep_files,
+        "eval_protocol": "pools/known/negatives(seed) built once from R0; only the scoring "
+                         "adjacency changes per replicate.",
+        "degree_sequence_preserved": True,  # asserted per replicate in build_replicate
+        "methods": methods_out,
+        "pa_sanity": pa_sanity,
+    }
+    out_json = out_results / "degree_null.json"
+    out_json.write_text(json.dumps(payload, indent=2))
+    log(f"wrote {out_json}")
+
+    # -- print the reportable table ----------------------------------------- #
+    print("\n=== R2 degree-preserving null: real R0 vs null MRR "
+          f"(N={N} replicates) ===")
+    print(f"{'method':24s} {'real_R0':>8s} {'null_mean':>10s} {'null_sd':>8s} "
+          f"{'real-null':>10s} {'p(null>=real)':>14s}")
+    for name in methods:
+        mo = methods_out[name]
+        print(f"{name:24s} {mo['real_R0_MRR']:8.4f} {mo['null_MRR_mean']:10.4f} "
+              f"{mo['null_MRR_sd']:8.4f} {mo['real_minus_null_mean']:10.4f} "
+              f"{mo['p_value']:14.3f}")
+    print("\nInterpretation: a large real-null gap (small p) = genuine structure beyond "
+          "degree;\na small gap (large p) = the R0 performance was mostly degree.")
+    log("DONE.")
 
 
 if __name__ == "__main__":

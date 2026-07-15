@@ -1,0 +1,56 @@
+{
+  "created": "2026-07-14 17:11:04",
+  "script": "scripts/hetionet_audit.py",
+  "graph": "hetionet-v1.0",
+  "purpose": "independent-graph replication of the Monarch leakage audit; NEVER merged with Monarch",
+  "provenance": {
+    "edges_sif": "/Users/weihua/Desktop/ScienceFairYear2/data/external/hetionet/hetionet-v1.0-edges.sif",
+    "edges_sha256": "fa1188de70bad1c86e4797a400e53df24131df31856cc4191d862a9daf2d85ca",
+    "nodes_tsv": "/Users/weihua/Desktop/ScienceFairYear2/data/external/hetionet/hetionet-v1.0-nodes.tsv",
+    "nodes_sha256": "3ad9eb86c031df8bc7d5efefa6edc93562182eb9a6a71e5129d3f18b9d42c50e",
+    "source_channel": "/Users/weihua/Downloads/sfy2-data/hetionet\\hetionet-v1.0-edges.sif",
+    "note": "No upstream Hetionet hash existed in ARTIFACT_HASHES.txt / the channel manifest (those cover only the Monarch artifacts); these sha256 are recorded here to freeze the exact Hetionet bytes this audit consumed."
+  },
+  "remap_rules": {
+    "Gene::N": "NCBIGENE:N",
+    "Disease::DOID:x": "DOID:x",
+    "Compound::DB": "DRUGBANK:DB",
+    "<Kind>::id": "<Kind>:id (-> 'unknown')"
+  },
+  "target_metaedge": "DaG",
+  "orientation": "gene->disease (SIF stores DaG disease->gene; flipped)",
+  "regimes_run": [
+    "R0",
+    "R1",
+    "R2"
+  ],
+  "R3": "SKIPPED -- Hetionet has no cross-species orthology metaedge",
+  "counts": {
+    "seeds": [
+      42,
+      1,
+      7
+    ],
+    "n_neg": 50,
+    "hub_cap": 2000,
+    "split_seed": 42,
+    "valid_frac": 0.1,
+    "test_frac": 0.1,
+    "n_dag_target_edges": 12623,
+    "n_test_edges": 1262,
+    "n_valid_edges": 1262,
+    "n_disease_pool": 136
+  },
+  "pa_sanity": {
+    "R0": 0.23114858979349537,
+    "R2": 0.23088857560262835,
+    "abs_diff": 0.0002600141908670195,
+    "tol": 0.05,
+    "pass": true
+  },
+  "results": {
+    "R0": "baselines_R0.json",
+    "R1": "baselines_R1.json",
+    "R2": "baselines_R2.json"
+  }
+}
