@@ -4,11 +4,11 @@
   "graph": "hetionet-v1.0",
   "purpose": "independent-graph replication of the Monarch leakage audit; NEVER merged with Monarch",
   "provenance": {
-    "edges_sif": "/Users/weihua/Desktop/ScienceFairYear2/data/external/hetionet/hetionet-v1.0-edges.sif",
+    "edges_sif": "data/external/hetionet/hetionet-v1.0-edges.sif",
     "edges_sha256": "fa1188de70bad1c86e4797a400e53df24131df31856cc4191d862a9daf2d85ca",
-    "nodes_tsv": "/Users/weihua/Desktop/ScienceFairYear2/data/external/hetionet/hetionet-v1.0-nodes.tsv",
+    "nodes_tsv": "data/external/hetionet/hetionet-v1.0-nodes.tsv",
     "nodes_sha256": "3ad9eb86c031df8bc7d5efefa6edc93562182eb9a6a71e5129d3f18b9d42c50e",
-    "source_channel": "/Users/weihua/Downloads/sfy2-data/hetionet\\hetionet-v1.0-edges.sif",
+    "source_channel": "sfy2-data/hetionet/hetionet-v1.0-edges.sif",
     "note": "No upstream Hetionet hash existed in ARTIFACT_HASHES.txt / the channel manifest (those cover only the Monarch artifacts); these sha256 are recorded here to freeze the exact Hetionet bytes this audit consumed."
   },
   "remap_rules": {

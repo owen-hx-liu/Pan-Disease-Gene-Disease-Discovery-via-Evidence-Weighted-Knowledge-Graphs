@@ -1,9 +1,20 @@
+import os
+
 from neo4j import GraphDatabase
 import pandas as pd
 
-# 1. Update these with your Neo4j info
-URI = "bolt://localhost:7687"
-AUTH = ("neo4j", "La1nos#b") # Change to your actual password
+# Neo4j connection read from the environment -- no secrets in source.
+#   NEO4J_URI       (default bolt://localhost:7687)
+#   NEO4J_USER      (default neo4j)
+#   NEO4J_PASSWORD  (required -- export before running)
+URI = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+_PASSWORD = os.environ.get("NEO4J_PASSWORD")
+if not _PASSWORD:
+    raise RuntimeError(
+        "NEO4J_PASSWORD is not set. Export your Neo4j password before running, e.g. "
+        "setx NEO4J_PASSWORD <password> (Windows) or export NEO4J_PASSWORD=<password> (Linux/macOS)."
+    )
+AUTH = (os.environ.get("NEO4J_USER", "neo4j"), _PASSWORD)
 
 def export_to_csv():
     driver = GraphDatabase.driver(URI, auth=AUTH)
