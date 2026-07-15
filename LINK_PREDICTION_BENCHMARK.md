@@ -7,8 +7,8 @@ test 581,443), seed 42 · **KGE:** dim 128, 100 epochs, GPU (RTX 5070) ·
 Script: `scripts/kge_benchmark.py`
 
 This is the real, executed benchmark (PyKEEN + PyTorch on GPU) that the earlier
-sandbox run could not perform. It fixes the original `TransE.py` (which evaluated on
-its own training data, `training=tf, testing=tf`) and reports standard metrics WITH
+sandbox run could not perform. It fixes the original standalone TransE script (which
+evaluated on its own training data, `training=tf, testing=tf`) and reports standard metrics WITH
 baselines under one protocol.
 
 ## Results
@@ -72,9 +72,9 @@ basis for reported hypotheses.
 
 ## No temporal split (unchanged)
 
-`temporalchart.py` simulates discovery years with `random.choices`; there is no
-genuine edge date, so a time-based split is impossible. The split is random.
-`kge_benchmark.py --year-col` enables a time split the moment real dates exist.
+The graph has no genuine edge-discovery dates, so a time-based split is impossible;
+the split is random. `kge_benchmark.py --year-col` enables a time split the moment
+real dates exist.
 
 ## Reproduce
 

@@ -1,5 +1,0 @@
-category,TransE_share,Hybrid_share
-disease -> disease,0.18209943383968072,0.0
-gene -> disease,0.8112334869906878,0.9961240310077519
-other -> disease,0.006667079169631532,0.003875968992248062
-other,0.0,0.0

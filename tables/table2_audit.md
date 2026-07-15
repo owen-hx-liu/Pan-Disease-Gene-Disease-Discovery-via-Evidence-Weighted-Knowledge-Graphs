@@ -11,3 +11,5 @@
 | PreferentialAttachment | 0.587 ± 0.002 | 0.582 ± 0.001 | 0.589 ± 0.002 | 0.581 ± 0.002 | +0% | 0.794 ± 0.000 | 0.774 ± 0.001 |
 | TransE | 0.799 ± 0.000 | 0.750 ± 0.004 | 0.611 ± 0.004 | 0.800 ± 0.002 | -24% | 0.962 ± 0.001 | 0.975 ± 0.001 |
 | RotatE | 0.827 ± 0.007 | 0.757 ± 0.004 | 0.655 ± 0.004 | 0.830 ± 0.004 | -21% | 0.967 ± 0.001 | 0.974 ± 0.000 |
+
+*Paired-bootstrap MRR difference (AdamicAdar − method; R0, seed 42, 1,000 resamples, n=4,228 test edges): CommonNeighbors Δ=+0.017 (p<0.001); Jaccard Δ=+0.060 (p<0.001); PreferentialAttachment Δ=-0.130 (p<0.001); Random Δ=+0.365 (p<0.001). Every difference is significant at p<0.001 (two-sided).*

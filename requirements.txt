@@ -16,4 +16,3 @@ tqdm==4.67.3
 
 # Optional: only needed for specific scripts
 # biopython        # FASTA parsing in pipeline.py / step3-5.py (LNCipedia)
-# neo4j            # drugrepurposing.py / druganalysis.py (Neo4j workflow)

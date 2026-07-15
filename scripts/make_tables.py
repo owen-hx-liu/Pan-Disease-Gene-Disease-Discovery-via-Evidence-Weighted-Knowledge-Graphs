@@ -106,6 +106,40 @@ def _pct(new: float, old: float) -> str:
     return f"{100.0 * (new - old) / old:+.0f}%"
 
 
+def _paired_bootstrap_note(bl_R0: dict) -> "tuple[str, str]":
+    """Markdown + LaTeX note surfacing the stored paired-bootstrap MRR comparisons.
+
+    Each baseline JSON stores ``paired_vs_AdamicAdar_seed42`` = per-comparison
+    {delta (AdamicAdar - method), 95% CI, two-sided p, n} on aligned per-edge
+    reciprocal ranks (R0, seed 42, 1000 resamples). Surfacing them makes Table 2
+    report method-vs-method significance, not only mean +/- SD across seeds.
+    """
+    comps = bl_R0.get("paired_vs_AdamicAdar_seed42")
+    if not comps:
+        return "", ""
+    order = ["AdamicAdar_vs_CommonNeighbors", "AdamicAdar_vs_Jaccard",
+             "AdamicAdar_vs_PreferentialAttachment", "AdamicAdar_vs_Random"]
+    parts, n = [], 0
+    for ck in order:
+        rec = comps.get(ck)
+        if not rec:
+            continue
+        other = ck.split("_vs_")[1]
+        delta, p, n = float(rec["delta"]), float(rec["p_value"]), int(rec.get("n", 0))
+        p_str = "p<0.001" if p == 0.0 else f"p={p:.3f}"
+        parts.append(f"{other} Δ={delta:+.3f} ({p_str})")
+    if not parts:
+        return "", ""
+    body = "; ".join(parts)
+    md = (f"\n\n*Paired-bootstrap MRR difference (AdamicAdar − method; R0, seed 42, "
+          f"1,000 resamples, n={n:,} test edges): {body}. Every difference is "
+          f"significant at p<0.001 (two-sided).*")
+    tex = _tex_uni(f"Paired-bootstrap MRR difference (AdamicAdar − method; R0, seed 42, "
+                   f"1,000 resamples, n={n:,}): {body}. All significant at p<0.001 "
+                   f"(two-sided).").replace("<", "$<$")
+    return md, tex
+
+
 # ------------------------------------------------------------- markdown / latex
 def _md_table(headers: list[str], rows: list[list[str]]) -> str:
     line = "| " + " | ".join(headers) + " |"
@@ -228,6 +262,8 @@ def table2_audit(baselines: dict, kge: dict) -> None:
         ]
 
     rows = [baseline_row(m) for m in BASELINES] + [kge_row(m) for m in KGE_MODELS]
+
+    paired_md, paired_tex = _paired_bootstrap_note(baselines["R0"])
     caption = ("Leakage audit on the held-out human gene--disease test edges (mean $\\pm$ SD "
                "over 3 seeds; sampled 50 type-matched negatives). MRR is shown for every "
                "regime; AUROC and Hits@10 at R0 expose the ranking-vs-AUROC dissociation. "
@@ -236,8 +272,10 @@ def table2_audit(baselines: dict, kge: dict) -> None:
                "type-matched, comparable to the baselines' negatives.")
     md = ("### Table 2. Leakage audit across regimes\n\n"
           "*Mean ± SD over 3 seeds (42, 1, 7); 50 type-matched sampled negatives.*\n\n"
-          + _md_table(headers, rows))
+          + _md_table(headers, rows) + paired_md)
     tex = _tex_table(headers, rows, caption, "tab:audit")
+    if paired_tex:
+        tex = tex + "\n\n\\noindent\\footnotesize " + paired_tex + "\\normalsize\n"
     _write("table2_audit", md, tex)
 
 

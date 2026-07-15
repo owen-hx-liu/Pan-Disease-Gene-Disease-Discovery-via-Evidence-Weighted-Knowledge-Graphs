@@ -69,9 +69,9 @@ All scripts use a fixed seed (42). Heavy steps checkpoint to disk.
 
 ## Key caveats (state these in the paper)
 
-- **No real temporal split.** `temporalchart.py` simulates discovery years with
-  `random.choices`; a time-based split is impossible until genuine edge dates are
-  added. The benchmark uses a random held-out split.
+- **No real temporal split.** The graph carries no genuine edge-discovery dates, so a
+  time-based split is impossible; the benchmark controls optimism with the leakage
+  regimes R0–R3 on a random held-out split, not a time split.
 - **Coverage is still Monarch-dominated** (~99% of edges) even after integrating
   three more sources; the remaining standalone DBs (CiVIC, DisGeNET, DrugCentral,
   GWAS, ClinGen, …) need ingestion (they require cross-file joins or free-text →
