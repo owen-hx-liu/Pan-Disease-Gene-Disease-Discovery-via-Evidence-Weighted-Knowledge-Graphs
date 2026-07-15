@@ -13,17 +13,28 @@ adding anything. Supersedes `../PAPER_SCOPE.md` (the orthology-only framing) if 
 >    (451k entities): every tractable negative-sampling recipe collapses to a trivial optimum, and
 >    the only loss that avoids it is compute-intractable. RotatE was *not* cut. ComplEx's degeneration
 >    is reported as an honest scale-limitation finding (pre-empts "why only one KGE family?").
-> 2. **The headline is no longer "de-leaking drops *every* method."** Of the three candidate leakage
->    sources, **only degree (R2) is material.** Redundancy (R1) and cross-species orthology (R3) came
->    back **~null for every method** — so they are now *designed negative controls*, not load-bearing
->    claims (a strength: we tested the orthology hypothesis a biomedical reviewer would raise, and
->    refuted it). Measured drops, sampled-50neg MRR:
+> 2. **The headline is a method-class-dependent leakage audit — not "de-leaking drops *every* method"
+>    and not "R1/R3 are both null."** *(Corrected 2026-07-15b: an earlier version of this banner
+>    mislabelled R1 as a null control for every method; the committed `kge_summary.json` shows R1
+>    drops KGE 6–8.5%. Scientific-conclusion change — flagged, not silent.)* Each candidate source
+>    leaks into a **different method class**:
+>    - **Degree (R2) leaks into everything** — the one *universal* source (baselines −43 to −49%, KGE
+>      −21 to −24%).
+>    - **Redundancy (R1) leaks only into multi-hop KGE** (TransE −6.2%, RotatE −8.5%) and is invisible
+>      to the 2-hop baselines (±0.3%). Mechanism: R1 removes 1,661 *direct* held-pair edges; a direct
+>      gene→disease edge is embedded as proximity by KGE but is **not a shared neighbour**, so it never
+>      enters the overlap heuristics. (Confirmed from `build_deleaked_splits.py:215`.)
+>    - **Orthology (R3) leaks into nothing** — the true null for every method (baselines ±0.5%, KGE
+>      +0.2 to +0.4%). This is the domain-specific hypothesis a biomedical reviewer would raise, and
+>      we refute it: it is a *designed negative control that came back null*.
+>
+>    Measured drops, sampled-50neg MRR:
 >
 >    | R0→ (ΔMRR) | CommonNeigh | AdamicAdar | Jaccard | PrefAttach | TransE | RotatE | role |
 >    |---|---|---|---|---|---|---|---|
->    | **R1 redundancy** | +0.3% | 0.0% | +0.3% | −0.8% | ~0% | ~0% | null control |
->    | **R2 degree null** | **−44%** | **−43%** | **−49%** | **+0.5%** | **−24%** | **−21%** | the effect |
->    | **R3 orthology** | +0.5% | +0.3% | +0.6% | −1.0% | +0.2% | +0.4% | null control |
+>    | **R1 redundancy** | +0.3% | 0.0% | +0.3% | −0.8% | **−6.2%** | **−8.5%** | KGE-only leak (multi-hop) |
+>    | **R2 degree null** | **−44%** | **−43%** | **−49%** | **+0.5%** | **−24%** | **−21%** | universal effect |
+>    | **R3 orthology** | +0.5% | +0.3% | +0.6% | −1.0% | +0.2% | +0.4% | null control (refuted hypothesis) |
 >
 >    PreferentialAttachment (pure degree) is unchanged under the degree null by construction — it
 >    validates that R2 preserves the degree sequence exactly. See `manuscript/` and the memory notes
@@ -57,15 +68,18 @@ strategy note rated a real-journal "novel finding" at ~25–40% on that bet.
 to (a) the orthology result and (b) reviewer complaints about KGE tuning:
 
 > **Thesis (reconciled to results; still tuning-proof).** Under a graded leakage audit of a
-> multi-species gene–disease benchmark, **degree structure is the one material source of evaluation
-> leakage**: a degree-preserving null (R2) drops the overlap heuristics 43–49% and both KGE models
-> 21–24% MRR, while redundancy (R1) and cross-species orthology (R3) leave every method unchanged
-> (±1%). We quantify each candidate source, release the de-leaked splits, and show the degree effect
-> is not a KGE-tuning artifact — it hits simple baselines and embeddings alike.
+> multi-species gene–disease benchmark, **the three candidate leakage sources leak into different
+> method classes.** *Degree* is the one **universal** source: a degree-preserving null (R2) drops the
+> overlap heuristics 43–49% and both KGE models 21–24% MRR. *Redundancy* (R1) is a **multi-hop-only**
+> source: it drops KGE 6–8.5% but leaves the 2-hop baselines flat (±0.3%). *Cross-species orthology*
+> (R3) leaks into **nothing** (±0.5% for all) — a refuted domain hypothesis. We quantify each source
+> per method class, release the de-leaked splits, and show the degree effect is not a KGE-tuning
+> artifact — it hits simple baselines and embeddings alike.
 
-Because the *material* effect (degree) drops embeddings **and** simple baselines alike, the claim does
-**not** depend on embeddings being well-tuned or on baselines "winning." The orthology and redundancy
-regimes ride along as **negative controls** — both came back null, which is itself a reportable,
+Because the *universal* effect (degree) drops embeddings **and** simple baselines alike, the headline
+does **not** depend on embeddings being well-tuned or on baselines "winning." The redundancy regime is
+a **method-class-diagnostic** result (it isolates a leak that only multi-hop methods are exposed to),
+and orthology (R3) rides along as a **negative control that came back null** — itself a reportable,
 reviewer-anticipating result, not a load-bearing claim.
 
 **Honesty note (state this in the paper).** Novelty here is *incremental and methodological*, not a
@@ -126,18 +140,25 @@ released protocol** is a genuine, useful, publishable contribution — the kind 
 
 ## 3. Central hypotheses and the killer experiment
 
-**H1 (primary, tuning-proof) — supported.** Of the graded leakage sources, the **degree-preserving
-null (R2)** is the one that reduces measured ranking performance — for the overlap heuristics
-(−43 to −49% MRR) and for both KGE models (−21 to −24%) alike; redundancy (R1) and orthology (R3) do
-not (±1%). The per-source, per-method drop is the headline, together with whether the **method
-ranking changes** under the degree null (PreferentialAttachment, pure degree, is unchanged by
-construction and validates the null).
+**H1 (primary, tuning-proof) — supported.** The **degree-preserving null (R2)** is the one *universal*
+leakage source: it reduces measured ranking performance for the overlap heuristics (−43 to −49% MRR)
+and for both KGE models (−21 to −24%) alike. The per-source, per-method-class drop is the headline,
+together with whether the **method ranking changes** under the degree null (PreferentialAttachment,
+pure degree, is unchanged by construction and validates the null).
 
-**H2 (secondary, Monarch-specific) — a clean null.** Does cross-species orthology contribute leakage
-*beyond* degree? **No.** Removing all ~520k `ORTHOLOGOUS_TO` + `MODEL_OF` edges (R0→R3, and the
-R2→R3 residual) leaves every method within ±1% (KGE +0.2–0.4%). Reported as the honest one-liner the
-plan anticipated: orthology leakage is not a distinct source on this graph. This *refutes* the
-domain-specific hypothesis a biomedical reviewer would raise — a strength, not a failed paper.
+**H1b (method-class diagnostic) — supported.** Redundancy (R1) is a leakage source **only for
+multi-hop methods**: it drops KGE 6–8.5% MRR (TransE −6.2%, RotatE −8.5%) while the 2-hop baselines
+stay flat (±0.3%). Mechanism (confirmed from `build_deleaked_splits.py:215`): R1 removes 1,661 *direct*
+held-pair edges; a direct gene→disease edge is embedded as proximity by KGE but is **not a shared
+neighbour**, so it never enters the overlap heuristics. This is a clean, mechanistic demonstration that
+*which* leakage source matters depends on the method class — a stronger audit result than "R1 is null."
+
+**H2 (secondary, Monarch-specific) — a clean null.** Does cross-species orthology contribute leakage?
+**No — for any method.** Removing all ~520k `ORTHOLOGOUS_TO` + `MODEL_OF` edges (R0→R3, and the
+R2→R3 residual) leaves every method within ±1% (KGE +0.2–0.4%). Orthology leakage is not a source on
+this graph. This *refutes* the domain-specific hypothesis a biomedical reviewer would raise — a
+strength, not a failed paper. (Note: it is **redundancy**, not orthology, that turned out to be the
+multi-hop-specific leak — the reverse of the pre-registered guess, reported honestly.)
 
 **Killer experiment (the figure that sells the paper):** every method's ranking (MRR, Hits@k) under
 four regimes on the *same* held-out human gene–disease edges:
@@ -149,10 +170,11 @@ four regimes on the *same* held-out human gene–disease edges:
 | **R2 Degree-controlled** | topology, via a degree-preserving permutation null | performance attributable to degree alone |
 | **R3 Orthology-blocked** (Monarch only) | `ORTHOLOGOUS_TO` + `MODEL_OF` edges, measured *after* R2 | orthology leakage *distinct from* degree |
 
-**Prediction (as it resolved):** performance falls sharply at **R2 only** (the degree null); R1 and
-R3 are flat. The orthology residual (R2→R3) came back **small/null**, which is reported as an honest,
-still-publishable finding (orthology leakage ≈ degree bias here). **Stretch regime (only if on
-schedule):** a temporal split on two dated Monarch releases (train older, test newer-only edges).
+**Prediction (as it resolved):** performance falls sharply at **R2** for every method (the universal
+degree effect); **R1 drops KGE only** (−6 to −8.5%) and is flat for the baselines; **R3 is flat for
+all** (the orthology null). The orthology residual (R2→R3) came back **null**, reported as an honest,
+still-publishable finding. **Stretch regime (only if on schedule):** a temporal split on two dated
+Monarch releases (train older, test newer-only edges).
 
 *Honesty guardrail:* we report whatever the drops actually are. The paper's value is a *rigorous*
 audit and a *reusable* resource, not a big number.
@@ -164,13 +186,15 @@ audit and a *reusable* resource, not a big number.
 - **C1 — A graded leakage-audit protocol + open harness, and the released de-leaked splits.** A
   single scoring path (`lib_eval`) and reusable, SHA-256'd R0–R3 splits any multi-species
   gene–disease benchmark can adopt. **This released resource is the centerpiece.**
-- **C2 — The measured, per-source leakage contribution across methods.** How much of each method's
+- **C2 — The measured, per-source, per-method-class leakage contribution.** How much of each method's
   reported performance is redundancy vs degree vs orthology, under one strict protocol, with ≥3 seeds,
   bootstrap 95% CIs, paired-bootstrap comparisons, and a permutation p-value for the degree control.
-  Includes the AUROC-vs-ranking dissociation as a *sub-result*, now explained mechanistically.
+  The key structural finding: **leakage is method-class-dependent** — degree leaks into every method,
+  redundancy leaks *only* into multi-hop KGE (with a shared-neighbour mechanism), and orthology leaks
+  into none. Includes the AUROC-vs-ranking dissociation as a *sub-result*, explained mechanistically.
 - **C3 — The degree-vs-orthology decomposition (secondary, Monarch-specific): a reported null.** The
-  R2→R3 residual is ~0 — cross-species orthology is **not** a leakage source distinct from degree on
-  this graph. Stated as one honest sentence; the audit + released resource stand regardless.
+  R2→R3 residual is ~0 — cross-species orthology is **not** a leakage source on this graph, for any
+  method class. Stated as one honest sentence; the audit + released resource stand regardless.
 - **C4 — Cross-graph robustness (generality).** The same audit rerun, unmodified, on a second
   pre-built graph (**Hetionet**) — showing "de-leaking drops methods" is not an artifact of one graph.
   (Orthology R3 is Monarch-only; stated explicitly.)
@@ -182,10 +206,10 @@ released de-leaked benchmark.
 
 **One-sentence contribution statement for the intro:** *"We audit multi-species gene–disease
 link-prediction benchmarks under a graded protocol that removes redundancy, degree, and cross-species
-orthology leakage in turn, show that the **degree** component is the one that materially inflates every
-method (redundancy and orthology are null), quantify each leakage source with significance tests,
-verify the degree effect on a second graph, and release the de-leaked splits and scoring harness as a
-reusable resource."*
+orthology leakage in turn, and show that leakage is **method-class-dependent**: degree inflates every
+method (baselines and KGE alike), redundancy inflates only multi-hop embeddings, and cross-species
+orthology inflates none; we quantify each source with significance tests, verify the degree effect on a
+second graph, and release the de-leaked splits and scoring harness as a reusable resource."*
 
 ---
 
@@ -199,6 +223,7 @@ reusable resource."*
 | "Degree bias on Monarch is known" (Gu 2024) | We *reuse* their degree-permutation idea as our R2 control and their filtering as a compute-saver, and cite them explicitly. Our delta is the graded multi-source audit + released splits + the orthology regime they omit. |
 | "Data leakage in KGE is already taxonomized" (Ranga 2025) | Cited. They cover redundancy/degree/cold-start on *drug* repurposing; we add a cross-species *orthology* regime for *gene–disease* and release cleaned splits rather than only measuring. |
 | "Ortholog bias is already known" (Alghamdi/Hoehndorf/Robinson 2022) | Cited and explicitly distinguished — closest prior art on the *phenomenon*. Our contribution is the KGE-benchmark *leakage* framing, per-regime quantification, and a released de-leaked split, not the discovery. |
+| "The R1 KGE drop is just less training data, not leakage" | R1 removes 1,661 of 5.85M edges (0.03%); a training-size loss that small cannot cost 6–8.5% MRR. The removed edges are *direct held-pair* edges (reverse/duplicate/symmetric restatements of the exact test pair), so their removal is by-construction a redundancy control, and the drop is specific to the held-out pairs they leaked. |
 | "Only one KG" | Zero-integration robustness run on Hetionet (C4). |
 | "Orthology is just degree bias" | Reported honestly via the R2→R3 residual; a null is one sentence, and the paper (audit + resource) still stands. |
 
