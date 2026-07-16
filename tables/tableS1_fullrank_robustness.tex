@@ -1,0 +1,14 @@
+\begin{table}[t]
+\centering
+\caption{Full-ranking robustness of the leakage regimes. Each held-out human gene--disease test edge is scored by the trained KGE and its true disease ranked against the entire type-matched disease pool (size $D$ per regime), excluding the gene's known training and test tails (filtered) -- the run\_robustness-comparable protocol, stricter than the 50 sampled negatives of Table~\ref{tab:audit}. Mean $\pm$ SD over 3 seed(s) (1, 7, 42). $\Delta$MRR vs R0 is the per-model change from the standard regime. Absolute MRR is far lower than under sampled negatives (the true disease competes with $\sim$14k pool diseases rather than 50), but the \emph{ordering} of the regime effects is preserved: the R2 degree-preserving null causes by far the largest drop while R1 (redundancy) causes only a small one -- the same pattern as the sampled-negative audit -- so the regime effects are not artifacts of negative sampling. 30 cold-start test genes (absent from the training vocabulary) receive the worst possible rank.}
+\label{tab:fullrank_robustness}
+\begin{tabular}{lrrrrrrrr}
+\toprule
+Model & Regime & Pool D & MRR & Hits@1 & Hits@3 & Hits@10 & AUROC (type) & $\Delta$MRR vs R0 \\
+\midrule
+TransE & R0 standard & 14,307 & 0.079 $\pm$ 0.001 & 0.036 $\pm$ 0.001 & 0.072 $\pm$ 0.002 & 0.150 $\pm$ 0.003 & 0.962 $\pm$ 0.002 & ref \\
+TransE & R1 redundancy & 14,252 & 0.071 $\pm$ 0.003 & 0.031 $\pm$ 0.002 & 0.066 $\pm$ 0.002 & 0.138 $\pm$ 0.008 & 0.954 $\pm$ 0.001 & -10\% \\
+TransE & R2 degree-null & 14,307 & 0.023 $\pm$ 0.002 & 0.005 $\pm$ 0.001 & 0.014 $\pm$ 0.003 & 0.042 $\pm$ 0.004 & 0.879 $\pm$ 0.001 & -71\% \\
+\bottomrule
+\end{tabular}
+\end{table}

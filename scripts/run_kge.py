@@ -419,6 +419,115 @@ def evaluate_regime(scorer, model, tf, train_edges, regime_name, test_edges, hub
 
 
 # --------------------------------------------------------------------------- #
+# Full-ranking evaluation (H1b robustness): rank the true disease against the
+# ENTIRE filtered disease pool, not 50 sampled negatives. This is the KGE analogue
+# of run_robustness.py's baseline "filtered full ranking", so the two are directly
+# comparable. The per-gene score vector (KGEScorer.score_t cache) makes it cheap.
+# --------------------------------------------------------------------------- #
+def _fullrank_one(vec, true_slot, excl_slots, D):
+    """Tie-averaged filtered rank of the true disease.
+
+    ``vec`` : length-D score vector over the pool diseases (higher = better).
+    ``true_slot`` : pool slot of the true disease, or None if the true disease is not
+                    in the pool (cold-start -> SENTINEL true score -> worst rank).
+    ``excl_slots`` : pool slots to drop from the negatives (gene's known tails + the
+                     true disease itself; only pool diseases shrink the denominator).
+    Identical semantics to run_robustness._rank_from_dict over the full pool.
+    """
+    true_s = float(vec[true_slot]) if true_slot is not None else SENTINEL
+    if excl_slots:
+        mask = np.ones(D, dtype=bool)
+        mask[list(excl_slots)] = False
+        neg = vec[mask]
+    else:
+        neg = vec
+    return 1.0 + float(np.sum(neg > true_s)) + 0.5 * float(np.sum(neg == true_s))
+
+
+def evaluate_regime_fullrank(scorer, model, tf, train_edges, regime_name, test_edges,
+                             device, rank_seed, class_cap, validate=0):
+    """Filtered full-ranking eval: each held-out true disease is ranked against the
+    entire disease pool (all disease-category entities in the training vocab) minus
+    the gene's known tails (train U test). Scores come from the model's score_t
+    vectors (one GPU call per test gene via KGEScorer.warm), so this costs the same
+    GPU work as the sampled protocol. Classification (AUROC/AUPRC) is unchanged.
+    """
+    e2id = tf.entity_to_id
+    known = le._known_tails_by_head(train_edges, test_edges, test_edges[:, 0])
+    genes = pd.unique(test_edges[:, 0])
+    scorer.warm(genes)                         # fills scorer.cache[gid] over scorer.dpos
+    did2slot = scorer.did2slot
+    D = len(scorer.dpos)
+    ranks = np.empty(len(test_edges), dtype=float)
+    pos_scores = np.empty(len(test_edges), dtype=float)
+    n_cold = 0
+    log(f"    [{regime_name}] FULL-RANK: {len(test_edges)} test edges vs pool D={D} ...")
+    for i, (g, _r, d_true) in enumerate(test_edges):
+        gid = e2id.get(g)
+        excl = set(known.get(g, ()))
+        excl.add(d_true)
+        excl_slots = [did2slot[e2id[d]] for d in excl if d in e2id and e2id[d] in did2slot]
+        n_filt = D - len(excl_slots)
+        vec = scorer.cache.get(gid) if gid is not None else None
+        if vec is None:                         # cold-start gene: worst possible rank
+            ranks[i] = n_filt + 1.0
+            pos_scores[i] = SENTINEL
+            n_cold += 1
+            continue
+        dtid = e2id.get(d_true)
+        true_slot = did2slot.get(int(dtid)) if dtid is not None else None
+        ranks[i] = _fullrank_one(vec, true_slot, excl_slots, D)
+        pos_scores[i] = float(vec[true_slot]) if true_slot is not None else SENTINEL
+
+    # correctness check: brute-force rank of the first `validate` scoreable edges
+    if validate:
+        _validate_fullrank(scorer, test_edges, known, ranks, validate)
+
+    rm = le.ranking_metrics(ranks)
+    mrr_ci = le.bootstrap_ci(1.0 / ranks)
+    log(f"    [{regime_name}] classification (AUROC/AUPRC) ...")
+    cls = classification_scores(model, tf, test_edges, train_edges, device,
+                                seed=rank_seed, cap=class_cap)
+    log(f"    [{regime_name}] FULL-RANK MRR={rm['MRR']:.4f} H@10={rm['Hits@10']:.4f} "
+        f"(pool D={D}, cold-start genes={n_cold})")
+    return {
+        "regime": regime_name,
+        "n_test": int(len(test_edges)),
+        "rank_protocol": f"filtered-full-rank (disease pool D={D}, run_robustness-comparable)",
+        "pool_size": int(D),
+        "n_coldstart_genes": int(n_cold),
+        "MRR": rm["MRR"], "Hits@1": rm["Hits@1"], "Hits@3": rm["Hits@3"], "Hits@10": rm["Hits@10"],
+        "MRR_ci_low": mrr_ci["ci_low"], "MRR_ci_high": mrr_ci["ci_high"],
+        "AUROC_random": cls["random"]["AUROC"], "AUPRC_random": cls["random"]["AUPRC"],
+        "AUROC_type": cls["type"]["AUROC"], "AUPRC_type": cls["type"]["AUPRC"],
+        "reciprocal_ranks": (1.0 / ranks).tolist(),
+    }
+
+
+def _validate_fullrank(scorer, test_edges, known, ranks, n):
+    """Assert the vectorized full-rank equals a brute-force rank for the first n
+    scoreable edges (loops the scorer over the whole pool per pair)."""
+    e2id = scorer.e2id
+    pool_ids = [d for d in e2id if category_of(d) == "disease"]
+    checked = 0
+    for i, (g, _r, d_true) in enumerate(test_edges):
+        if checked >= n:
+            break
+        if e2id.get(g) is None or e2id.get(d_true) is None:
+            continue
+        excl = set(known.get(g, ())); excl.add(d_true)
+        cand = [d_true] + [d for d in pool_ids if d not in excl]
+        sc = np.fromiter((float(scorer(g, d)) for d in cand), dtype=float, count=len(cand))
+        true_s, neg_s = sc[0], sc[1:]
+        bf = 1.0 + float(np.sum(neg_s > true_s)) + 0.5 * float(np.sum(neg_s == true_s))
+        if abs(bf - ranks[i]) > 1e-6:
+            raise AssertionError(f"full-rank mismatch edge {i} ({g}->{d_true}): "
+                                 f"vectorized {ranks[i]} != bruteforce {bf}")
+        checked += 1
+    log(f"    [validate] {checked} edges: vectorized full-rank == brute force. OK")
+
+
+# --------------------------------------------------------------------------- #
 # Merge per-run JSONs -> summary with mean +/- sd over seeds
 # --------------------------------------------------------------------------- #
 def merge_results(results_dir, out_path):
@@ -611,9 +720,14 @@ def train_eval_write(cfg, model_name, rd, dim, epochs, seed, device, args, out_p
                                      progress_secs=args.progress_secs, lcwa_slice=args.lcwa_slice_size)
     log(f"    trained in {secs:.0f}s (batch={tmeta['batch']})")
     scorer = KGEScorer(model, tf, device)
-    run = evaluate_regime(scorer, model, tf, rd["train_edges"], rd["short"],
-                          rd["test_edges"], rd["hub_set"], rd["hub_filter"], device,
-                          args.n_neg, args.rank_seed, args.class_cap, pools=pools, known=known)
+    if args.full_rank:
+        run = evaluate_regime_fullrank(scorer, model, tf, rd["train_edges"], rd["short"],
+                                       rd["test_edges"], device, args.rank_seed, args.class_cap,
+                                       validate=args.validate_fullrank)
+    else:
+        run = evaluate_regime(scorer, model, tf, rd["train_edges"], rd["short"],
+                              rd["test_edges"], rd["hub_set"], rd["hub_filter"], device,
+                              args.n_neg, args.rank_seed, args.class_cap, pools=pools, known=known)
     run.update(model=model_name, seed=seed, dim=dim, epochs=epochs,
                train_file=rd["train_file"], test_file=rd["test_file"],
                n_train_edges=int(len(rd["train_edges"])), n_train_full=rd["n_train_full"],
@@ -684,9 +798,21 @@ def main():
                     help="NO training/torch: rank a RANDOM scorer to validate the wiring")
     ap.add_argument("--limit-test", type=int, default=None,
                     help="use only the first N test edges (fast dry-run / smoke)")
+    ap.add_argument("--full-rank", action="store_true",
+                    help="rank each true disease against the ENTIRE filtered disease pool "
+                         "(run_robustness-comparable) instead of --n-neg sampled negatives; "
+                         "writes to results/kge_fullrank/ so the sampled headline stays intact")
+    ap.add_argument("--validate-fullrank", type=int, default=0,
+                    help="brute-force-check the first N full-rank edges per regime (correctness)")
     args = ap.parse_args()
     # Reduce fragmentation-driven OOM on the GPU (must precede torch's CUDA init).
     os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+    # Full-ranking runs live in a sibling dir so they never overwrite the sampled
+    # headline kge_summary.json that the manuscript tables/figures read.
+    if args.full_rank and Path(args.results_dir) == RESULTS_DIR:
+        args.results_dir = str(RESULTS_DIR.parent / "kge_fullrank")
+        print(f"[run_kge] --full-rank -> writing to {args.results_dir}")
 
     Path(args.results_dir).mkdir(parents=True, exist_ok=True)
     summary_path = Path(args.results_dir) / "kge_summary.json"

@@ -8,6 +8,9 @@ Emits both Markdown (``tables/*.md``) and LaTeX (``tables/*.tex``) for:
   Table 3 -- Degree-null decomposition (real R0 MRR, degree-null MRR, the
              structure-beyond-degree residual, permutation p-value).
   Table 4 -- Cross-graph robustness on Hetionet (R0/R1/R2).
+  Table S1 -- Full-ranking robustness: the regime effects re-measured with each true
+             disease ranked against the ENTIRE filtered disease pool (run_kge.py
+             --full-rank) instead of 50 sampled negatives, from kge_fullrank/.
 
 Every number is read from a JSON file; the script fails loudly (exits non-zero)
 if any expected input is missing, rather than silently emitting a blank cell.
@@ -73,6 +76,33 @@ def _hetionet() -> dict[str, dict]:
     out = {}
     for r in ["R0", "R1", "R2"]:
         out[r] = _load(os.path.join(RESULTS, "hetionet", f"baselines_{r}.json"))
+    return out
+
+
+def _kge_fullrank() -> tuple[dict, list]:
+    """(aggregate, runs) from the full-ranking robustness summary.
+
+    Same shape as the sampled ``kge/kge_summary.json`` but produced by
+    ``run_kge.py --full-rank`` (each true disease ranked against the entire
+    filtered disease pool instead of 50 sampled negatives).
+    """
+    payload = _load(os.path.join(RESULTS, "kge_fullrank", "kge_summary.json"))
+    return payload["aggregate"], payload.get("runs", [])
+
+
+def _fullrank_pool_info(runs: list) -> dict[str, dict]:
+    """regime -> {'pool_size', 'n_coldstart_genes'} read from the per-run records.
+
+    Both quantities are seed-invariant (they depend only on the regime's training
+    vocabulary), so the last run of a regime is representative.
+    """
+    out: dict[str, dict] = {}
+    for r in runs:
+        reg = r.get("regime")
+        if reg is None:
+            continue
+        out[reg] = {"pool_size": r.get("pool_size"),
+                    "n_coldstart_genes": r.get("n_coldstart_genes")}
     return out
 
 
@@ -341,6 +371,89 @@ def table4_hetionet(hetio_bl: dict) -> None:
     _write("table4_hetionet", md, tex)
 
 
+# ------------------------------------------------------------------- Table S1
+def tableS1_fullrank(agg: dict, runs: list) -> None:
+    """Supplementary table: the regime effects under *filtered full ranking*.
+
+    Table 2 ranks each held-out disease against 50 sampled type-matched negatives.
+    Here every true disease is ranked against the ENTIRE filtered disease pool
+    (D per regime), the stricter run_robustness-comparable protocol. If the R0->R2
+    degree-null collapse (and R1 flatness) survive this change of protocol, they are
+    not artifacts of negative sampling -- that is the robustness claim. Every number
+    is read from kge_fullrank/kge_summary.json; regimes/models auto-adapt to whatever
+    the summary contains (e.g. R3/RotatE appear automatically if later run).
+    """
+    headers = ["Model", "Regime", "Pool D", "MRR", "Hits@1", "Hits@3", "Hits@10",
+               "AUROC (type)", "ΔMRR vs R0"]
+    pool_info = _fullrank_pool_info(runs)
+
+    models = [m for m in KGE_MODELS if any(k.startswith(f"{m}|") for k in agg)]
+    if not models:  # nothing to build -> fail loudly rather than emit an empty table
+        sys.exit("[make_tables] kge_fullrank summary has no TransE/RotatE cells")
+
+    rows: list[list[str]] = []
+    seed_counts: set[int] = set()
+    seeds_seen: set[int] = set()
+    coldstart: dict[str, int] = {}
+    for model in models:
+        regimes = [r for r in REGIMES if _kge_key(model, r) in agg]
+        r0_key = _kge_key(model, "R0")
+        r0_mrr = agg[r0_key]["MRR_mean"] if r0_key in agg else None
+        for r in regimes:
+            rec = agg[_kge_key(model, r)]
+            seed_counts.add(int(rec.get("n_seeds", 0)))
+            seeds_seen.update(int(s) for s in rec.get("seeds", []))
+            mrr_m, mrr_sd = _kge_stat(agg, model, r, "MRR")
+            pool = pool_info.get(r, {}).get("pool_size")
+            cold = pool_info.get(r, {}).get("n_coldstart_genes")
+            if cold is not None:
+                coldstart[r] = int(cold)
+            delta = "ref" if r == "R0" else (_pct(mrr_m, r0_mrr) if r0_mrr else "n/a")
+            rows.append([
+                model, REGIME_LABEL.get(r, r),
+                f"{pool:,}" if pool is not None else "—",
+                _pm(mrr_m, mrr_sd),
+                _pm(*_kge_stat(agg, model, r, "Hits@1")),
+                _pm(*_kge_stat(agg, model, r, "Hits@3")),
+                _pm(*_kge_stat(agg, model, r, "Hits@10")),
+                _pm(*_kge_stat(agg, model, r, "AUROC_type")),
+                delta,
+            ])
+
+    n_seeds = (str(next(iter(seed_counts))) if len(seed_counts) == 1
+               else f"{min(seed_counts)}–{max(seed_counts)}")
+    seeds_str = ", ".join(str(s) for s in sorted(seeds_seen))
+    if len(set(coldstart.values())) == 1:
+        cold_note = (f"{next(iter(coldstart.values()))} cold-start test genes (absent from the "
+                     f"training vocabulary) receive the worst possible rank.")
+    else:
+        cold_note = ("Cold-start test genes (absent from training, worst rank): "
+                     + ", ".join(f"{k} {coldstart[k]}" for k in REGIMES if k in coldstart) + ".")
+
+    caption = (f"Full-ranking robustness of the leakage regimes. Each held-out human "
+               f"gene--disease test edge is scored by the trained KGE and its true disease "
+               f"ranked against the entire type-matched disease pool (size $D$ per regime), "
+               f"excluding the gene's known training and test tails (filtered) -- the "
+               f"run\\_robustness-comparable protocol, stricter than the 50 sampled negatives "
+               f"of Table~\\ref{{tab:audit}}. Mean $\\pm$ SD over {n_seeds} seed(s) "
+               f"({seeds_str}). $\\Delta$MRR vs R0 is the per-model change from the standard "
+               f"regime. Absolute MRR is far lower than under sampled negatives (the true "
+               f"disease competes with $\\sim$14k pool diseases rather than 50), but the "
+               f"\\emph{{ordering}} of the regime effects is preserved: the R2 degree-preserving "
+               f"null causes by far the largest drop while R1 (redundancy) causes only a small "
+               f"one -- the same pattern as the sampled-negative audit -- so the regime "
+               f"effects are not artifacts of negative sampling. {cold_note}")
+    md = ("### Table S1. Full-ranking robustness of the regime effects\n\n"
+          f"*Filtered full ranking against the whole disease pool (D per regime); "
+          f"mean ± SD over {n_seeds} seed(s) ({seeds_str}). Stricter analogue of the "
+          f"sampled-negative audit in Table 2: the R2 degree-null collapse and the smaller "
+          f"R1 drop both reproduce (absolute MRR is lower against the ~14k-disease pool).*\n\n"
+          + _md_table(headers, rows)
+          + f"\n\n*{cold_note}*")
+    tex = _tex_table(headers, rows, caption, "tab:fullrank_robustness")
+    _write("tableS1_fullrank_robustness", md, tex)
+
+
 def main() -> None:
     print("Building manuscript tables from result JSONs...")
     monarch, hetio = _graph_stats()
@@ -348,11 +461,13 @@ def main() -> None:
     kge = _kge()
     dn = _degree_null()
     hetio_bl = _hetionet()
+    fullrank_agg, fullrank_runs = _kge_fullrank()
 
     table1_graph_stats(monarch, hetio)
     table2_audit(baselines, kge)
     table3_degree_null(dn)
     table4_hetionet(hetio_bl)
+    tableS1_fullrank(fullrank_agg, fullrank_runs)
     print(f"\nAll tables written to {os.path.relpath(OUT_DIR, REPO_ROOT)}/")
 
 
