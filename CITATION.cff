@@ -1,0 +1,52 @@
+# Citation metadata for this repository (Citation File Format 1.2.0).
+# GitHub renders a "Cite this repository" widget from this file, and Zenodo reads
+# it if .zenodo.json is absent. .zenodo.json is authoritative for the Zenodo deposit.
+# BEFORE PUBLISHING: add author ORCIDs if available and set `doi:` to the reserved
+# Zenodo DOI (reserve it in the Zenodo deposit form to cite the DOI in the manuscript).
+cff-version: 1.2.0
+message: "If you use this software or the de-leaked benchmark, please cite it as below."
+title: "Quantifying evaluation leakage in multi-species gene-disease link prediction: a graded audit and de-leaked benchmark"
+type: software
+authors:
+  - family-names: "Liu"
+    given-names: "Owen"
+    affiliation: "Independent Researcher"
+  - family-names: "Tang"
+    given-names: "Ryan"
+    affiliation: "Independent Researcher"
+  - family-names: "Augustine"
+    given-names: "Daniel"
+    affiliation: "Independent Researcher"
+version: v1.0.0
+date-released: "2026-07-16"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/owen-hx-liu/Pan-Disease-Gene-Disease-Discovery-via-Evidence-Weighted-Knowledge-Graphs"
+url: "https://github.com/owen-hx-liu/Pan-Disease-Gene-Disease-Discovery-via-Evidence-Weighted-Knowledge-Graphs"
+keywords:
+  - knowledge graph
+  - knowledge graph embedding
+  - link prediction
+  - gene-disease association
+  - data leakage
+  - benchmark evaluation
+  - node degree bias
+  - reproducibility
+  - Monarch Initiative
+  - TransE
+  - RotatE
+abstract: >-
+  Code, de-leaked evaluation splits, and benchmark results for a graded leakage audit of
+  gene-disease link prediction on a multi-species, Monarch-derived knowledge graph
+  (452,012 nodes; 5,860,539 directed edges). Two knowledge-graph-embedding models
+  (TransE, RotatE) and five topological baselines (Random, Common-Neighbors,
+  Adamic-Adar, Jaccard, Preferential-Attachment) are evaluated under one shared ranking
+  harness on 4,228 held-out human gene-disease test edges across four leakage regimes
+  (R0 standard, R1 redundancy, R2 degree-preserving null, R3 orthology-blocked; seeds
+  42/1/7). Evaluation leakage is method-class-dependent: node-degree structure (R2) is
+  the one universal leak, train/test redundancy (R1) leaks only into multi-hop KGE, and
+  cross-species orthology (R3) is a designed negative control that comes back null. The
+  release includes the de-leaked splits, per-regime result JSONs (including a filtered
+  full-ranking robustness run), table/figure generators that read only the frozen
+  result JSONs, and a one-command regeneration script.

@@ -1,0 +1,28 @@
+Data license: Creative Commons Attribution 4.0 International (CC BY 4.0)
+
+This license applies to the DATA assets in this repository -- the de-leaked
+evaluation splits and split manifest (data/processed/splits/) and the benchmark
+result files (data/processed/results/). The software/code is licensed separately
+under the MIT License; see LICENSE.
+
+Copyright (c) 2026 Owen Liu
+
+These data are licensed under the Creative Commons Attribution 4.0 International
+License. You are free to share and adapt the material for any purpose, even
+commercially, under the following terms:
+
+  - Attribution -- You must give appropriate credit, provide a link to the
+    license, and indicate if changes were made.
+
+Full legal code: https://creativecommons.org/licenses/by/4.0/legalcode
+Human-readable summary: https://creativecommons.org/licenses/by/4.0/
+
+ATTRIBUTION / PROVENANCE
+------------------------
+These data are derived works. The knowledge graph is approximately 98.5% content
+from the Monarch Initiative (https://monarchinitiative.org/, CC BY 4.0), which is
+itself an aggregator, augmented with seven curated sources: DGIdb, GWAS Catalog,
+DrugCentral, Orphadata, Gene2Phenotype, CIViC, and DIDA. When reusing these data
+you must retain attribution to the Monarch Initiative and to the underlying
+primary sources, each of which carries its own license and citation requirements.
+See the per-source provenance table in the repository for details.
