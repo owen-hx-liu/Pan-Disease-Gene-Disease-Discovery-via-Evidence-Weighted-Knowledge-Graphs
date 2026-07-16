@@ -1,8 +1,6 @@
 # Citation metadata for this repository (Citation File Format 1.2.0).
 # GitHub renders a "Cite this repository" widget from this file, and Zenodo reads
 # it if .zenodo.json is absent. .zenodo.json is authoritative for the Zenodo deposit.
-# BEFORE PUBLISHING: add author ORCIDs if available and set `doi:` to the reserved
-# Zenodo DOI (reserve it in the Zenodo deposit form to cite the DOI in the manuscript).
 cff-version: 1.2.0
 message: "If you use this software or the de-leaked benchmark, please cite it as below."
 title: "Quantifying evaluation leakage in multi-species gene-disease link prediction: a graded audit and de-leaked benchmark"
@@ -11,6 +9,7 @@ authors:
   - family-names: "Liu"
     given-names: "Owen"
     affiliation: "Independent Researcher"
+    orcid: "https://orcid.org/0009-0003-0476-5270"
   - family-names: "Tang"
     given-names: "Ryan"
     affiliation: "Independent Researcher"
@@ -18,6 +17,7 @@ authors:
     given-names: "Daniel"
     affiliation: "Independent Researcher"
 version: v1.0.0
+doi: "10.5281/zenodo.21398832"
 date-released: "2026-07-16"
 license:
   - MIT
