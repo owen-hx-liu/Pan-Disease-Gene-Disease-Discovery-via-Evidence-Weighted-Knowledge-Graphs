@@ -50,6 +50,15 @@ entire pool of about 14,300 diseases instead of 50 sampled negatives, reproduces
 strengthens the degree effect. Exact per-method numbers are in `tables/`: Table 2 for the
 sampled-negative protocol and Table S1 for full ranking.
 
+A degree-stratified re-analysis (Table 5, Figure 4) decomposes each method's MRR by gene- and
+disease-degree quartile, recomputed from the stored per-edge ranks with no retraining. It
+localizes the leak: performance climbs steeply with disease degree (Preferential-Attachment
+gains +0.90 MRR from the rarest to the most popular disease quartile), and the degree-null
+penalty falls almost entirely on the rare-disease, low-degree strata. A worked case study
+(Table 6) shows the practical cost: hub diseases such as insomnia are ranked first by degree
+alone, while genuine rare-disease associations (for example RS1 to X-linked retinoschisis)
+are pushed to the bottom of the list.
+
 ## Repository layout
 
 ```
@@ -60,12 +69,14 @@ scripts/                     pipeline and analysis code
   run_kge.py                 TransE + RotatE (GPU); --full-rank for the robustness run
   run_robustness.py          baseline full-ranking robustness
   hetionet_audit.py          cross-graph replication on Hetionet
+  degree_stratified.py       degree-stratified re-analysis (gene vs disease degree; no retraining)
+  case_study.py              worked case study (degree false-positives vs missed rare edges)
   lib_eval.py                the single shared ranking and scoring harness
-  make_tables.py             Tables 1-4 and S1 from result JSONs (no hand-typed numbers)
-  make_figures.py            Figures 1-3 from result JSONs
+  make_tables.py             Tables 1-6 and S1 from result JSONs (no hand-typed numbers)
+  make_figures.py            Figures 1-4 from result JSONs
 data/processed/
   splits/                    the de-leaked benchmark (train/valid/test, R1/R2/R3, manifest)
-  results/                   per-regime baseline, KGE, robustness, and Hetionet results
+  results/                   per-regime baseline, KGE, robustness, Hetionet, degree-stratified, and case-study results
   provenance/                per-source contribution table
 tables/                      generated tables (Markdown and LaTeX)
 figures/                     generated figures (PNG and PDF)
@@ -90,8 +101,8 @@ The tables and figures read only the frozen result JSONs, so you can regenerate 
 a GPU:
 
 ```bash
-python scripts/make_tables.py    # tables/table1-4 and tableS1 (.md and .tex)
-python scripts/make_figures.py   # figures/fig1-3 (.png and .pdf)
+python scripts/make_tables.py    # tables/table1-6 and tableS1 (.md and .tex)
+python scripts/make_figures.py   # figures/fig1-4 (.png and .pdf)
 ```
 
 All runs use fixed seeds (42, 1, 7). Paths are repo-relative; there are no hard-coded machine

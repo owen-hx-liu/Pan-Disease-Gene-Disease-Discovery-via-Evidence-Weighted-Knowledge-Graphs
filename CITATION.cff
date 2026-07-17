@@ -16,9 +16,9 @@ authors:
   - family-names: "Augustine"
     given-names: "Daniel"
     affiliation: "Independent Researcher"
-version: v1.0.0
+version: v1.1.0
 doi: "10.5281/zenodo.21398832"
-date-released: "2026-07-16"
+date-released: "2026-07-17"
 license:
   - MIT
   - CC-BY-4.0

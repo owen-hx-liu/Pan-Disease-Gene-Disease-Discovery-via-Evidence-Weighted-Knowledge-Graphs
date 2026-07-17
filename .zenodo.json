@@ -1,7 +1,7 @@
 {
   "upload_type": "software",
   "title": "Quantifying evaluation leakage in multi-species gene-disease link prediction: a graded audit and de-leaked benchmark",
-  "version": "v1.0.0",
+  "version": "v1.1.0",
   "language": "eng",
   "access_right": "open",
   "license": "cc-by-4.0",
