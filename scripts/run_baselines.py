@@ -209,6 +209,7 @@ def main():
 
         results = {}          # method -> metric -> [per-seed values]
         per_edge_rr = {}      # method -> per-edge reciprocal ranks at the FIRST seed
+        per_edge_rr_all = {}  # method -> [per-edge reciprocal ranks, one list per seed]
         for seed in seeds:
             scorers = make_scorers(adj, deg, args.hub_cap, seed)
             for name in want_methods:
@@ -228,8 +229,10 @@ def main():
                     rec[k].append(rm[k])
                 rec["AUROC"].append(cm["AUROC"])
                 rec["AUPRC"].append(cm["AUPRC"])
+                rr = 1.0 / ranks
+                per_edge_rr_all.setdefault(name, []).append([float(x) for x in rr])
                 if seed == seeds[0]:
-                    per_edge_rr[name] = 1.0 / ranks
+                    per_edge_rr[name] = rr
                 log(f"  {regime} seed={seed} {name:23s} "
                     f"MRR={rm['MRR']:.4f} H@10={rm['Hits@10']:.4f} "
                     f"AUROC={cm['AUROC']:.4f} ({time.time() - t0:.1f}s)")
@@ -269,6 +272,12 @@ def main():
             "seeds": seeds,
             "methods": summary,
             f"paired_vs_AdamicAdar_seed{seeds[0]}": paired,
+            # Per-edge reciprocal ranks, one list per seed (in `seeds` order), aligned to
+            # the test.csv row order -- the same per-edge signal the KGE runs persist. Feeds
+            # the degree-stratified re-analysis (scripts/degree_stratified.py) so the
+            # topological baselines can be stratified without re-running.
+            "per_edge_reciprocal_ranks": per_edge_rr_all,
+            "per_edge_rr_seed_order": seeds,
             "created": time.strftime("%Y-%m-%d %H:%M:%S"),
         }
         p = out / f"baselines_{regime}.json"

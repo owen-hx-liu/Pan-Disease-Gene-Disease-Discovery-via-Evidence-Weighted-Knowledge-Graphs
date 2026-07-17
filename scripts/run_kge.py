@@ -117,7 +117,7 @@ def log(m):
 # Per-model training recipes (standard published hyperparameters)
 # --------------------------------------------------------------------------- #
 def model_config():
-    """Return {name: cfg} for the two benchmark models. Imported lazily so the
+    """Return {name: cfg} for the benchmark models. Imported lazily so the
     module loads without pykeen.
 
     TransE (translational) uses SLCWA + self-adversarial negative sampling (NSSA;
@@ -133,8 +133,20 @@ def model_config():
     negatives are no longer needed for stability, so ComplEx uses 16 negatives (parity
     with TransE); a one-cell 16-vs-32 check on R0 documents that the count is immaterial.
     Full-softmax LCWA (Lacroix+2018) is intractable at 451k entities (see module docstring).
+
+    DistMult (bilinear; Yang et al., ICLR 2015) is the third KGE baseline. It is the
+    diagonal-real special case of ComplEx (half the parameters, no imaginary part), so it
+    inherits the same failure mode -- its unbounded bilinear scores saturate NSSA's
+    margin-sigmoid -- and therefore gets the SAME non-saturating softplus recipe as
+    ComplEx, at SLCWA parity with the translational models (16 negs). Being the lighter
+    real-valued model it is the more tractable bilinear at 452k entities, which is why we
+    add it (not ComplEx) as the reported third row: if any bilinear model trains here, it
+    is this one. If it too collapses to chance (MRR ~= 0.09, AUROC ~= 0.50), that is
+    reported honestly as a caveat rather than a clean result, and a canonical-bilinear
+    rescue (LCWA 1-vs-all cross-entropy, Lacroix+2018) is available via --distmult-loop
+    lcwa (slice-tractable; see train_model / --lcwa-slice-size).
     """
-    from pykeen.models import TransE, ComplEx, RotatE
+    from pykeen.models import TransE, ComplEx, RotatE, DistMult
     nssa = dict(loss="nssa", loss_kwargs=dict(margin=9.0, adversarial_temperature=1.0))
     return {
         "TransE": dict(cls=TransE, num_negs=16, ref="Bordes+2013; NSSA Sun+2019", **nssa),
@@ -145,6 +157,11 @@ def model_config():
         "RotatE": dict(cls=RotatE, num_negs=16, ref="Sun+2019 (RotatE); NSSA", **nssa),
         "ComplEx": dict(cls=ComplEx, num_negs=16, loss="softplus",
                         ref="Trouillon+2016 (logistic/softplus loss)"),
+        # DistMult: diagonal-real special case of ComplEx -> same softplus recipe, SLCWA
+        # parity (16 negs). NSSA saturates on bilinear scores (documented for ComplEx);
+        # softplus does not. Overridable via --distmult-{negs,loss,loop,margin}.
+        "DistMult": dict(cls=DistMult, num_negs=16, loss="softplus",
+                         ref="Yang+2015 (DistMult); softplus/logistic loss (bilinear; NSSA saturates)"),
     }
 
 
@@ -569,7 +586,7 @@ def merge_results(results_dir, out_path):
         "runs": runs,
         "meta": {
             "harness": "scripts/lib_eval.py (shared with baselines)",
-            "models": ["TransE", "ComplEx"],
+            "models": sorted({r["model"] for r in runs if r.get("model")}),
             "target_relation": TARGET_REL,
             "splits_manifest_sha256": _manifest_sha(),
             "generated": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -713,7 +730,10 @@ def train_eval_write(cfg, model_name, rd, dim, epochs, seed, device, args, out_p
             log(f"  skip (exists): {out_path.name}")
         return False
     tf = TriplesFactory.from_labeled_triples(rd["train_edges"].astype(str))
-    log(f"--- training {model_name} (nssa, {cfg.get('num_negs')} negs) "
+    _loop = cfg.get("loop", "slcwa")
+    _recipe = (f"{cfg.get('loss')}, lcwa" if _loop == "lcwa"
+               else f"{cfg.get('loss')}, {cfg.get('num_negs')} negs")
+    log(f"--- training {model_name} ({_recipe}) "
         f"{rd['short']} dim={dim} epochs={epochs} seed={seed}")
     model, secs, tmeta = train_model(cfg, tf, dim, epochs, seed, device,
                                      args.slcwa_batch, tag=f"{model_name} {rd['short']} d{dim} s{seed}",
@@ -732,7 +752,7 @@ def train_eval_write(cfg, model_name, rd, dim, epochs, seed, device, args, out_p
                train_file=rd["train_file"], test_file=rd["test_file"],
                n_train_edges=int(len(rd["train_edges"])), n_train_full=rd["n_train_full"],
                subgraph_frac=rd["subgraph_frac"], train_seconds=round(secs, 1),
-               train_batch=tmeta["batch"], loop="slcwa", loss=cfg.get("loss"),
+               train_batch=tmeta["batch"], loop=cfg.get("loop", "slcwa"), loss=cfg.get("loss"),
                num_negs=cfg.get("num_negs"), hparams_ref=cfg.get("ref"))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(run, indent=2))
@@ -753,7 +773,7 @@ def main():
     ap.add_argument("--splits-dir", default=str(SPLITS_DIR))
     ap.add_argument("--results-dir", default=str(RESULTS_DIR))
     ap.add_argument("--models", nargs="+", default=["TransE", "RotatE"],
-                    choices=["TransE", "RotatE", "ComplEx"])
+                    choices=["TransE", "RotatE", "ComplEx", "DistMult"])
     ap.add_argument("--regimes", nargs="+", default=["R0", "R2", "R3"],
                     help="KGE skips R1 (hub filter is a no-op for embeddings; R1==R0). "
                          "R2 is auto-skipped until its degree-null graph is built.")
@@ -786,6 +806,15 @@ def main():
     ap.add_argument("--complex-loop", default=None, choices=["slcwa", "lcwa"],
                     help="override ComplEx training loop; 'lcwa' = canonical 1-vs-all "
                          "(defaults its loss to crossentropy unless --complex-loss is given)")
+    ap.add_argument("--distmult-negs", type=int, default=None,
+                    help="override DistMult negatives/positive (rescue/sweep of the bilinear recipe)")
+    ap.add_argument("--distmult-loss", default=None,
+                    help="override DistMult loss: softplus|nssa|bcewithlogits|crossentropy (rescue/sweep)")
+    ap.add_argument("--distmult-margin", type=float, default=9.0,
+                    help="NSSA margin/gamma used when --distmult-loss nssa")
+    ap.add_argument("--distmult-loop", default=None, choices=["slcwa", "lcwa"],
+                    help="override DistMult training loop; 'lcwa' = canonical 1-vs-all bilinear "
+                         "(Lacroix+2018; defaults its loss to crossentropy unless --distmult-loss is given)")
     ap.add_argument("--lcwa-slice-size", type=int, default=20000,
                     help="chunk the all-entity target dim for LCWA so it fits GPU memory")
     ap.add_argument("--progress-secs", type=float, default=1.0,
@@ -879,6 +908,28 @@ def main():
         log(f"ComplEx override: loop={cfgs['ComplEx'].get('loop', 'slcwa')} "
             f"negs={cfgs['ComplEx'].get('num_negs')} loss={cfgs['ComplEx'].get('loss')} "
             f"loss_kwargs={cfgs['ComplEx'].get('loss_kwargs')}")
+
+    # Optional DistMult recipe overrides (bilinear-model rescue / hyperparameter sweep),
+    # mirroring the ComplEx overrides above.
+    if args.distmult_negs is not None:
+        cfgs["DistMult"]["num_negs"] = args.distmult_negs
+    if args.distmult_loss is not None:
+        cfgs["DistMult"]["loss"] = args.distmult_loss
+        if args.distmult_loss == "nssa":
+            cfgs["DistMult"]["loss_kwargs"] = dict(margin=args.distmult_margin,
+                                                   adversarial_temperature=1.0)
+        else:
+            cfgs["DistMult"].pop("loss_kwargs", None)
+    if args.distmult_loop is not None:
+        cfgs["DistMult"]["loop"] = args.distmult_loop
+        if args.distmult_loop == "lcwa" and args.distmult_loss is None:
+            # canonical bilinear recipe: 1-vs-all softmax cross-entropy (Lacroix+2018)
+            cfgs["DistMult"]["loss"] = "crossentropy"
+            cfgs["DistMult"].pop("loss_kwargs", None)
+    if any(v is not None for v in (args.distmult_negs, args.distmult_loss, args.distmult_loop)):
+        log(f"DistMult override: loop={cfgs['DistMult'].get('loop', 'slcwa')} "
+            f"negs={cfgs['DistMult'].get('num_negs')} loss={cfgs['DistMult'].get('loss')} "
+            f"loss_kwargs={cfgs['DistMult'].get('loss_kwargs')}")
 
     # Flatten every (regime, seed, dim, epochs, kind, model) cell into ONE ordered plan
     # so the log shows whole-battery progress + a running ETA, on top of the per-epoch bar.

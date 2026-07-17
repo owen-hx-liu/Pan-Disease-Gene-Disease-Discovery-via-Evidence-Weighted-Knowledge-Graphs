@@ -1,0 +1,16 @@
+\begin{table}[t]
+\centering
+\caption{Worked examples of how degree leakage misranks held-out gene--disease edges (rank 1 = true disease on top of 50 type-matched candidates, 51 = below all of them; RotatE mean over 3 seeds; recomputed from stored per-edge ranks). A barely-connected antisense RNA is confidently mapped to a popular hub disease -- the rank survives the R2 degree-null and a pure-degree predictor reproduces it -- whereas canonical disease-defining associations of well-annotated genes (e.g. RS1, the retinoschisis gene) are ranked near-last because the specific disease node is rare. For the insomnia hub (degree 801; the held-out target of 86 genes) the true disease is ranked \#1 for 97\% of those genes by pure-degree Preferential-Attachment, 85\% by RotatE, and only 43\% by shared-neighbour Adamic-Adar --- the degree predictor matches or beats the KGE, and RotatE's mean MRR here barely moves under the degree-null (0.932 to 0.882).}
+\label{tab:case_study}
+\begin{tabular}{lrrrrrrr}
+\toprule
+Case & Held-out edge (gene $\to$ disease) & Gene deg & Disease deg & RotatE R0 & RotatE R2 & Pref.-Att. & Adamic-Adar \\
+\midrule
+degree false-positive & LIN28B-AS1 $\to$ insomnia & 1 & 801 & 1 & 1 & 1 & 26 \\
+missed real association & RS1 $\to$ retinoschisis & 350 & 1 & 51 & 48 & 48 & 28 \\
+missed real association & NF1 $\to$ plexiform neurofibroma & 1,065 & 1 & 43 & 49 & 48 & 36 \\
+missed real association & KIT $\to$ mucosal melanoma & 1,387 & 1 & 49 & 45 & 48 & 30 \\
+missed real association & ONECUT1 $\to$ neonatal diabetes mellitus & 277 & 1 & 50 & 50 & 46 & 26 \\
+\bottomrule
+\end{tabular}
+\end{table}

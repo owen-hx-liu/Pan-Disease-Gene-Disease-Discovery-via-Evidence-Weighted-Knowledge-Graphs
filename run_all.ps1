@@ -11,9 +11,11 @@
    5. run_baselines.py R0-R3    -> data/processed/results/baselines/baselines_R*.json
    6. run_kge.py (GPU)          -> data/processed/results/kge/*.json + kge_summary.json
    7. hetionet_audit.py R0-R2   -> data/processed/results/hetionet/baselines_R*.json
-   8. make_figures.py           -> figures/fig1-3.{png,pdf}
-   9. make_tables.py            -> tables/table1-4.{md,tex}
-  10. hash-verify reproduced splits (informational)
+   8. degree_stratified.py      -> data/processed/results/degree_stratified/degree_stratified.json
+   9. case_study.py             -> data/processed/results/case_study/case_study.json
+  10. make_figures.py           -> figures/fig1-4.{png,pdf}
+  11. make_tables.py            -> tables/table1-6.{md,tex}
+  12. hash-verify reproduced splits (informational)
 
  Acceptance: a clean clone + the data channel reproduces Table 2 and Fig 2.
  Runtimes below are approximate on a modern workstation; the KGE step needs a
@@ -144,13 +146,25 @@ try {
         -Out "data/processed/results/hetionet/baselines_R{0,1,2}.json" `
         -PyArgs @("scripts/hetionet_audit.py", "--regimes", "R0,R1,R2", "--seeds", "42,1,7")
 
-    # ------------------------------------------------------------ 8-9. deliverables
-    Invoke-Step -Title "Manuscript figures (Fig 1-3, png + pdf)" -Est "<1 min" `
-        -Out "figures/fig1-3.{png,pdf}" `
+    # ---------------------------------------------- 8. degree-stratified re-analysis
+    Invoke-Step -Title "Degree-stratified re-analysis (gene vs disease degree; no retraining)" `
+        -Est "<1 min" `
+        -Out "data/processed/results/degree_stratified/degree_stratified.json" `
+        -PyArgs @("scripts/degree_stratified.py")
+
+    # ---------------------------------------------------- 9. worked case study
+    Invoke-Step -Title "Worked case study (degree false-positives vs missed rare edges)" `
+        -Est "<1 min" `
+        -Out "data/processed/results/case_study/case_study.json" `
+        -PyArgs @("scripts/case_study.py")
+
+    # ----------------------------------------------------------- 10-11. deliverables
+    Invoke-Step -Title "Manuscript figures (Fig 1-4, png + pdf)" -Est "<1 min" `
+        -Out "figures/fig1-4.{png,pdf}" `
         -PyArgs @("scripts/make_figures.py")
 
-    Invoke-Step -Title "Manuscript tables (Tables 1-4, md + tex)" -Est "<1 min" `
-        -Out "tables/table1-4.{md,tex}" `
+    Invoke-Step -Title "Manuscript tables (Tables 1-6 + S1, md + tex)" -Est "<1 min" `
+        -Out "tables/table1-6.{md,tex}" `
         -PyArgs @("scripts/make_tables.py")
 
     # ------------------------------------------------- 10. verify reproduction

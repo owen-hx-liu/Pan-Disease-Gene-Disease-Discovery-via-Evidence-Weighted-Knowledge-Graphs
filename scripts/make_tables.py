@@ -79,6 +79,14 @@ def _hetionet() -> dict[str, dict]:
     return out
 
 
+def _degree_stratified() -> dict:
+    return _load(os.path.join(RESULTS, "degree_stratified", "degree_stratified.json"))
+
+
+def _case_study() -> dict:
+    return _load(os.path.join(RESULTS, "case_study", "case_study.json"))
+
+
 def _kge_fullrank() -> tuple[dict, list]:
     """(aggregate, runs) from the full-ranking robustness summary.
 
@@ -181,7 +189,8 @@ def _md_table(headers: list[str], rows: list[list[str]]) -> str:
 # UTF-8 glyphs used in the Markdown cells -> portable pdflatex math/commands.
 _TEX_UNI = {
     "±": "$\\pm$", "→": "$\\to$", "Δ": "$\\Delta$", "−": "$-$",
-    "≥": "$\\ge$", "≤": "$\\le$", "×": "$\\times$", "–": "--", "’": "'",
+    "≥": "$\\ge$", "≤": "$\\le$", "×": "$\\times$", "–": "--", "—": "---",
+    "∼": "$\\sim$", "’": "'",
 }
 
 
@@ -203,7 +212,10 @@ def _tex_table(headers: list[str], rows: list[list[str]], caption: str, label: s
     return "\n".join([
         "\\begin{table}[t]",
         "\\centering",
-        f"\\caption{{{_tex_uni(caption)}}}",
+        # Captions carry inline math (e.g. $\\pm$) and manual \\_ escapes, so we do NOT run
+        # the cell escaper over them -- but a bare % or # would still break pdflatex, so
+        # escape just those two (no existing caption pre-escapes them).
+        f"\\caption{{{_tex_uni(caption.replace('%', chr(92) + '%').replace('#', chr(92) + '#'))}}}",
         f"\\label{{{label}}}",
         f"\\begin{{tabular}}{{{colspec}}}",
         "\\toprule",
@@ -454,6 +466,112 @@ def tableS1_fullrank(agg: dict, runs: list) -> None:
     _write("tableS1_fullrank_robustness", md, tex)
 
 
+# ------------------------------------------------------------------- Table 5
+def table5_degree_stratified(ds: dict) -> None:
+    """Per-method degree stratification of the held-out test set (all method classes).
+
+    One row per method. The two lift columns contrast the axes: performance rises steeply
+    with the RANKED DISEASE's degree (target popularity) but barely with the QUERY GENE's
+    degree. The two R2-drop columns localise the leak: on rare targets the score is genuine
+    structure (large drop under the degree-null), on popular targets it is almost pure
+    degree (small drop) -- and Preferential-Attachment, pure degree, barely drops anywhere.
+    """
+    dis = ds["by_disease_degree"]
+    gene = ds["by_gene_degree"]
+    methods = ds["meta"].get("methods_covered") or ds["meta"]["models_covered"]
+    dq = dis["strata"]["quartiles"]
+    gq = gene["strata"]["quartiles"]
+    q1, q4 = "Q1", f"Q{len(dq)}"
+
+    def mrr(block: dict, method: str, regime: str, name: str) -> float:
+        return float(block["results"][f"{method}|{regime}"]["quartiles"][name]["MRR_mean"])
+
+    headers = ["Method", "R0 Q1 (rare)", "R0 Q4 (popular)", "Δ disease (Q4−Q1)",
+               "Δ gene (Q4−Q1)", "R2 drop Q1", "R2 drop Q4"]
+    rows = []
+    for m in methods:
+        d_q1, d_q4 = mrr(dis, m, "R0", q1), mrr(dis, m, "R0", q4)
+        g_q1, g_q4 = mrr(gene, m, "R0", q1), mrr(gene, m, "R0", q4)
+        r2_q1, r2_q4 = mrr(dis, m, "R2", q1), mrr(dis, m, "R2", q4)
+        rows.append([
+            m, f"{d_q1:.3f}", f"{d_q4:.3f}", f"{d_q4 - d_q1:+.3f}", f"{g_q4 - g_q1:+.3f}",
+            _pct(r2_q1, d_q1), _pct(r2_q4, d_q4),
+        ])
+
+    d_ranges = "; ".join(f"{n} {dq[n]['degree_min']}–{dq[n]['degree_max']}" for n in dq)
+    g_ranges = "; ".join(f"{n} {gq[n]['degree_min']}–{gq[n]['degree_max']}" for n in gq)
+    caption = ("Per-method degree stratification of the held-out human gene--disease test "
+               "edges (equal-count quartiles; MRR mean over 3 seeds; sampled 50 type-matched "
+               "negatives; recomputed from stored per-edge ranks, no retraining). "
+               "``$\\Delta$ disease'' and ``$\\Delta$ gene'' are the Q4$-$Q1 MRR lift along "
+               "the ranked-disease and query-gene degree axes: every structural method gains "
+               "far more from target popularity than from query popularity. ``R2 drop'' is "
+               "the loss under the degree-preserving null within the rare (Q1) and popular "
+               "(Q4) disease quartiles: structure-using methods lose most of their rare-target "
+               "score but little of their popular-target score, while Preferential-Attachment "
+               "(pure degree) barely drops in either. Disease-degree quartiles: " + d_ranges +
+               ". Gene-degree quartiles: " + g_ranges + ".")
+    md = ("### Table 5. Degree-stratified performance across method classes\n\n"
+          "*MRR mean over 3 seeds (42, 1, 7); 50 type-matched sampled negatives; recomputed "
+          "from stored per-edge ranks (no retraining). Δ disease / Δ gene = Q4−Q1 lift along "
+          "each degree axis; R2 drop = loss under the degree-null within that disease "
+          f"quartile.*\n\n*Disease-degree quartiles: {d_ranges}. Gene-degree quartiles: "
+          f"{g_ranges}.*\n\n"
+          + _md_table(headers, rows))
+    tex = _tex_table(headers, rows, caption, "tab:degree_stratified")
+    _write("table5_degree_stratified", md, tex)
+
+
+# ------------------------------------------------------------------- Table 6
+def table6_case_study(cs: dict) -> None:
+    """Worked examples of degree-driven misranking, from the frozen per-edge ranks.
+
+    Ranks run 1 (true disease on top) to 51 (below all 50 sampled negatives). The
+    degree-1 antisense RNA is confidently mapped to the insomnia hub -- a rank the
+    degree-null preserves and a pure-degree predictor reproduces -- while canonical,
+    disease-defining associations of heavily annotated genes are ranked near-last because
+    the specific disease node is sparse.
+    """
+    examples = cs["worked_examples"]
+    hub = cs["hub_example"]
+    label = {"false_confidence": "degree false-positive",
+             "missed_rare": "missed real association"}
+    headers = ["Case", "Held-out edge (gene → disease)", "Gene deg", "Disease deg",
+               "RotatE R0", "RotatE R2", "Pref.-Att.", "Adamic-Adar"]
+    rows = []
+    for w in examples:
+        rows.append([
+            label.get(w["kind"], w["kind"]),
+            f"{w['gene']} → {w['disease']}",
+            f"{w['gene_degree']:,}", f"{w['disease_degree']:,}",
+            str(w["RotatE_rank_R0"]), str(w["RotatE_rank_R2"]),
+            str(w["PrefAttach_rank_R0"]), str(w["AdamicAdar_rank_R0"]),
+        ])
+    hub_note = (f"For the {hub['disease_name']} hub (degree {hub['disease_degree']:,}; the "
+                f"held-out target of {hub['n_test_genes']} genes) the true disease is ranked "
+                f"#1 for {hub['pct_rank1_PrefAttach']:.0f}% of those genes by pure-degree "
+                f"Preferential-Attachment, {hub['pct_rank1_RotatE']:.0f}% by RotatE, and only "
+                f"{hub['pct_rank1_AdamicAdar']:.0f}% by shared-neighbour Adamic-Adar — the "
+                f"degree predictor matches or beats the KGE, and RotatE's mean MRR here barely "
+                f"moves under the degree-null ({hub['RotatE_R0_MRR']:.3f} to "
+                f"{hub['RotatE_R2_MRR']:.3f}).")
+    caption = ("Worked examples of how degree leakage misranks held-out gene--disease edges "
+               "(rank 1 = true disease on top of 50 type-matched candidates, 51 = below all "
+               "of them; RotatE mean over 3 seeds; recomputed from stored per-edge ranks). "
+               "A barely-connected antisense RNA is confidently mapped to a popular hub "
+               "disease -- the rank survives the R2 degree-null and a pure-degree predictor "
+               "reproduces it -- whereas canonical disease-defining associations of "
+               "well-annotated genes (e.g. RS1, the retinoschisis gene) are ranked near-last "
+               "because the specific disease node is rare. " + hub_note)
+    md = ("### Table 6. Worked examples of degree-driven misranking\n\n"
+          "*Rank 1 = true disease ranked above all 50 type-matched negatives; 51 = below all "
+          "of them. RotatE mean over 3 seeds; recomputed from stored per-edge ranks.*\n\n"
+          + _md_table(headers, rows)
+          + f"\n\n*{hub_note}*")
+    tex = _tex_table(headers, rows, caption, "tab:case_study")
+    _write("table6_case_study", md, tex)
+
+
 def main() -> None:
     print("Building manuscript tables from result JSONs...")
     monarch, hetio = _graph_stats()
@@ -462,11 +580,15 @@ def main() -> None:
     dn = _degree_null()
     hetio_bl = _hetionet()
     fullrank_agg, fullrank_runs = _kge_fullrank()
+    ds = _degree_stratified()
+    cs = _case_study()
 
     table1_graph_stats(monarch, hetio)
     table2_audit(baselines, kge)
     table3_degree_null(dn)
     table4_hetionet(hetio_bl)
+    table5_degree_stratified(ds)
+    table6_case_study(cs)
     tableS1_fullrank(fullrank_agg, fullrank_runs)
     print(f"\nAll tables written to {os.path.relpath(OUT_DIR, REPO_ROOT)}/")
 

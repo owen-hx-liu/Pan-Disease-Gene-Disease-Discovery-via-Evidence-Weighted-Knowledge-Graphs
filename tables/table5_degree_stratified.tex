@@ -1,0 +1,18 @@
+\begin{table}[t]
+\centering
+\caption{Per-method degree stratification of the held-out human gene--disease test edges (equal-count quartiles; MRR mean over 3 seeds; sampled 50 type-matched negatives; recomputed from stored per-edge ranks, no retraining). ``$\Delta$ disease'' and ``$\Delta$ gene'' are the Q4$-$Q1 MRR lift along the ranked-disease and query-gene degree axes: every structural method gains far more from target popularity than from query popularity. ``R2 drop'' is the loss under the degree-preserving null within the rare (Q1) and popular (Q4) disease quartiles: structure-using methods lose most of their rare-target score but little of their popular-target score, while Preferential-Attachment (pure degree) barely drops in either. Disease-degree quartiles: Q1 0--40; Q2 40--134; Q3 134--374; Q4 374--1248. Gene-degree quartiles: Q1 0--97; Q2 97--234; Q3 235--425; Q4 425--4913.}
+\label{tab:degree_stratified}
+\begin{tabular}{lrrrrrr}
+\toprule
+Method & R0 Q1 (rare) & R0 Q4 (popular) & $\Delta$ disease (Q4$-$Q1) & $\Delta$ gene (Q4$-$Q1) & R2 drop Q1 & R2 drop Q4 \\
+\midrule
+Random & 0.090 & 0.090 & +0.001 & +0.003 & +0\% & +0\% \\
+CommonNeighbors & 0.442 & 0.533 & +0.091 & +0.454 & -86\% & -10\% \\
+AdamicAdar & 0.465 & 0.546 & +0.082 & +0.476 & -85\% & -8\% \\
+Jaccard & 0.443 & 0.424 & -0.019 & +0.397 & -84\% & -17\% \\
+PreferentialAttachment & 0.061 & 0.961 & +0.900 & -0.154 & +1\% & +0\% \\
+TransE & 0.683 & 0.864 & +0.180 & -0.044 & -62\% & -7\% \\
+RotatE & 0.682 & 0.916 & +0.234 & -0.067 & -62\% & -3\% \\
+\bottomrule
+\end{tabular}
+\end{table}

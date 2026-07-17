@@ -11,8 +11,10 @@
 #   5. run_baselines.py R0-R3    -> data/processed/results/baselines/baselines_R*.json
 #   6. run_kge.py (GPU)          -> data/processed/results/kge/*.json + kge_summary.json
 #   7. hetionet_audit.py R0-R2   -> data/processed/results/hetionet/baselines_R*.json
-#   8. make_figures.py           -> figures/fig1-3.{png,pdf}
-#   9. make_tables.py            -> tables/table1-4.{md,tex}
+#   8. degree_stratified.py      -> data/processed/results/degree_stratified/degree_stratified.json
+#   9. case_study.py             -> data/processed/results/case_study/case_study.json
+#  10. make_figures.py           -> figures/fig1-4.{png,pdf}
+#  11. make_tables.py            -> tables/table1-6.{md,tex}
 #  10. hash-verify reproduced splits (informational)
 #
 # Acceptance: a clean clone + the data channel reproduces Table 2 and Fig 2.
@@ -136,13 +138,23 @@ run_py "Hetionet cross-graph robustness (DaG; R0,R1,R2)" "~2-5 min" \
   "data/processed/results/hetionet/baselines_R{0,1,2}.json" \
   "$PYTHON" scripts/hetionet_audit.py --regimes R0,R1,R2 --seeds 42,1,7
 
-# ---------------------------------------------------------------- 8-9. deliverables
-run_py "Manuscript figures (Fig 1-3, png + pdf)" "<1 min" \
-  "figures/fig1-3.{png,pdf}" \
+# ------------------------------------------- 8. degree-stratified re-analysis
+run_py "Degree-stratified re-analysis (gene vs disease degree; no retraining)" "<1 min" \
+  "data/processed/results/degree_stratified/degree_stratified.json" \
+  "$PYTHON" scripts/degree_stratified.py
+
+# ------------------------------------------------- 9. worked case study
+run_py "Worked case study (degree false-positives vs missed rare edges)" "<1 min" \
+  "data/processed/results/case_study/case_study.json" \
+  "$PYTHON" scripts/case_study.py
+
+# ---------------------------------------------------------------- 10-11. deliverables
+run_py "Manuscript figures (Fig 1-4, png + pdf)" "<1 min" \
+  "figures/fig1-4.{png,pdf}" \
   "$PYTHON" scripts/make_figures.py
 
-run_py "Manuscript tables (Tables 1-4, md + tex)" "<1 min" \
-  "tables/table1-4.{md,tex}" \
+run_py "Manuscript tables (Tables 1-6 + S1, md + tex)" "<1 min" \
+  "tables/table1-6.{md,tex}" \
   "$PYTHON" scripts/make_tables.py
 
 # ------------------------------------------------------- 10. verify reproduction

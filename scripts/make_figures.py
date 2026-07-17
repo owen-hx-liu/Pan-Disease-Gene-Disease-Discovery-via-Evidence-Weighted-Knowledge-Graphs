@@ -90,6 +90,10 @@ def _degree_null() -> dict:
     return _load(os.path.join(RESULTS, "null", "degree_null.json"))
 
 
+def _degree_stratified() -> dict:
+    return _load(os.path.join(RESULTS, "degree_stratified", "degree_stratified.json"))
+
+
 def _bl(bl_regime: dict, method: str, metric: str) -> tuple[float, float]:
     m = bl_regime["methods"][method][metric]
     return float(m["mean"]), float(m["sd"])
@@ -204,14 +208,56 @@ def fig3_decomposition(dn: dict) -> None:
     _save(fig, "fig3_degree_vs_structure")
 
 
+# ------------------------------------------------------------------- Figure 4
+def fig4_degree_stratified(ds: dict) -> None:
+    """Held-out R0 MRR by degree quartile along two axes -- a double dissociation. Left:
+    query-gene degree; the overlap heuristics climb steeply (they need the gene to have
+    neighbours) while KGE is flat. Right: ranked-disease degree; KGE and the pure-degree
+    Preferential-Attachment anchor climb steeply while the overlap heuristics are flat.
+    Different method classes lean on different entities' degree, but every method leans on
+    degree; Random is flat on both."""
+    methods = ds["meta"].get("methods_covered") or ds["meta"]["models_covered"]
+    gene, dis = ds["by_gene_degree"], ds["by_disease_degree"]
+    qnames = list(dis["strata"]["quartiles"].keys())
+    x = list(range(len(qnames)))
+
+    def series(block: dict, method: str):
+        recs = block["results"][f"{method}|R0"]["quartiles"]
+        mu = [recs[n]["MRR_mean"] for n in qnames]
+        sd = [recs[n]["MRR_sd"] for n in qnames]
+        return mu, sd
+
+    fig, (axg, axd) = plt.subplots(1, 2, figsize=(9.5, 4.2), sharey=True)
+    for ax, block, title in ((axg, gene, "Query-gene degree"),
+                             (axd, dis, "Ranked-disease degree")):
+        q = block["strata"]["quartiles"]
+        for m in methods:
+            mu, sd = series(block, m)
+            lo = [a - s for a, s in zip(mu, sd)]
+            hi = [a + s for a, s in zip(mu, sd)]
+            ax.plot(x, mu, color=COLOR[m], marker=MARKER[m], ms=6, lw=2, label=m, zorder=3)
+            ax.fill_between(x, lo, hi, color=COLOR[m], alpha=0.12, zorder=2)
+        ax.set_xticks(x)
+        ax.set_xticklabels([f"{n}\n{q[n]['degree_min']}–{q[n]['degree_max']}" for n in qnames])
+        ax.set_xlabel("Degree quartile (low → high)")
+        ax.set_title(title)
+    axg.set_ylabel("R0 MRR (mean ± SD, 3 seeds)")
+    axd.legend(fontsize=7, loc="upper left", ncol=1)
+    fig.suptitle("A double dissociation: overlap heuristics ride query-gene degree; "
+                 "KGE and Pref.-Attachment ride target-disease degree", y=1.03, fontsize=10)
+    _save(fig, "fig4_degree_stratified")
+
+
 def main() -> None:
     print("Building manuscript figures from result JSONs...")
     baselines = _baselines()
     kge = _kge()
     dn = _degree_null()
+    ds = _degree_stratified()
     fig1_dissociation(baselines, kge)
     fig2_audit(baselines, kge)
     fig3_decomposition(dn)
+    fig4_degree_stratified(ds)
     print(f"\nAll figures written to {os.path.relpath(FIG_DIR, REPO_ROOT)}/")
 
 
