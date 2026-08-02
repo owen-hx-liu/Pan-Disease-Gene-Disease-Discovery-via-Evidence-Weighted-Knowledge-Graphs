@@ -44,10 +44,16 @@ OUTPUT
     data/processed/splits/train_R2_degree_null_seed42.csv    first replicate; fixed name so
                                                              lib_eval's R2 regime + `run_baselines
                                                              --regimes R2` resolve to it.
-    data/processed/splits/null/degree_null_rep<k>.csv        every replicate (k=0..N-1).
+    data/processed/splits/null/degree_null_rep<k>.csv        every replicate (k=0..N-1), unless
+                                                             --no-write-replicates is given.
     data/processed/results/null/degree_null.json             per method: real R0 MRR, mean null
                                                              MRR, per-replicate null MRRs, and a
                                                              permutation p-value.
+
+A replicate CSV is ~291 MB, so a large permutation distribution is disk-bound rather than
+compute-bound: 200 replicates would need ~58 GB. --no-write-replicates keeps each replicate
+in memory, scores it, records its per-method MRR, and discards it. The canonical rewiring is
+still written, so the R2 regime file and every result derived from it are unchanged.
 
 RUNTIME PREREQUISITES (this is Machine B's heavy job)
 -----------------------------------------------------
@@ -59,6 +65,7 @@ invariants on a tiny synthetic graph and needs no split files.
 Usage:
     python scripts/build_degree_null.py                     # 10 replicates, seed 42
     python scripts/build_degree_null.py --replicates 20
+    python scripts/build_degree_null.py --replicates 200 --no-write-replicates
     python scripts/build_degree_null.py --self-test         # fast, file-free invariant check
 """
 from __future__ import annotations
@@ -205,6 +212,20 @@ def build_replicate(df: pd.DataFrame, swap_mult: int, seed: int) -> pd.DataFrame
 # --------------------------------------------------------------------------- #
 # Scoring (evaluation held fixed to R0; only the adjacency changes)
 # --------------------------------------------------------------------------- #
+def count_recreated_test_edges(rep_edges: np.ndarray, test_lookup: set) -> int:
+    """How many held-out R0 test triples the rewiring recreates exactly.
+
+    A degree-preserving swap is free to land a (head, relation, tail) that happens to be
+    one of the held-out test triples, which puts a true positive back into the adjacency
+    the null is scored on. That can only help the null, so the permutation test stays
+    conservative, but the rate belongs in the methods disclosure. ``test_lookup`` is the
+    set of R0 test triples, built once and reused across replicates.
+    """
+    rel_mask = pd.Index(rep_edges[:, 1]).isin({t[1] for t in test_lookup})
+    sub = rep_edges[rel_mask]
+    return sum(1 for e in zip(sub[:, 0], sub[:, 1], sub[:, 2]) if e in test_lookup)
+
+
 def score_methods(rep_edges, train0, test0, hubs0, pools, known,
                   methods, n_neg, hub_cap, eval_seed):
     """Score ``methods`` on a replicate's adjacency, ranking the fixed R0 test edges.
@@ -292,6 +313,14 @@ def main():
                     help="max |PA null MRR - PA R0 MRR| before the sanity assert fails")
     ap.add_argument("--resume", action="store_true",
                     help="reuse existing replicate CSVs instead of re-running their swaps")
+    ap.add_argument("--force-canonical", action="store_true",
+                    help="overwrite an existing train_R2_degree_null_seed42.csv. This is a "
+                         "frozen, hash-registered artifact that this script does not "
+                         "reproduce bit-for-bit; regenerating it invalidates every published "
+                         "R2 result and requires re-hashing split_manifest.json")
+    ap.add_argument("--no-write-replicates", action="store_true",
+                    help="score each replicate in memory and discard it instead of writing a "
+                         "~291 MB CSV per replicate; the canonical R2 file is still written")
     ap.add_argument("--self-test", action="store_true",
                     help="validate swap invariants on a synthetic graph; needs no split files")
     args = ap.parse_args()
@@ -303,7 +332,8 @@ def main():
     methods = [m.strip() for m in args.methods.split(",") if m.strip()]
     splits_dir = Path(args.splits_dir)
     null_dir = splits_dir / "null"
-    null_dir.mkdir(parents=True, exist_ok=True)
+    if not args.no_write_replicates:
+        null_dir.mkdir(parents=True, exist_ok=True)
     out_results = Path(args.out_results)
     out_results.mkdir(parents=True, exist_ok=True)
 
@@ -327,9 +357,12 @@ def main():
         log(f"  R0 {name:23s} MRR={real[name]['MRR']:.4f} "
             f"H@10={real[name]['Hits@10']:.4f}")
 
-    # -- replicates: swap -> checkpoint CSV -> score ------------------------- #
+    # -- replicates: swap -> (optional checkpoint CSV) -> score -------------- #
+    # Built once: the R0 test triples, for the per-replicate recreation count.
+    test_lookup = set(zip(test0[:, 0], test0[:, 1], test0[:, 2]))
     null_mrr = {name: [] for name in methods}          # method -> [per-rep MRR]
     null_metrics = {name: [] for name in methods}       # method -> [per-rep full metrics]
+    recreated = []                                      # per-rep recreated test triples
     rep_files = []
     for k in range(args.replicates):
         rep_seed = args.seed + k
@@ -337,18 +370,43 @@ def main():
         if args.resume and rep_path.exists():
             log(f"[rep {k}] resume: reading {rep_path.name}")
             rep_edges = lib_eval._load_edges(rep_path)
+            rep_files.append(str(rep_path))
         else:
             t0 = time.time()
             null_df = build_replicate(df, args.swap_mult, rep_seed)
-            null_df.to_csv(rep_path, index=False)
-            log(f"[rep {k}] swapped + wrote {rep_path.name} "
-                f"({len(null_df):,} edges, {time.time() - t0:.1f}s)")
+            t_swap = time.time() - t0
+            if args.no_write_replicates:
+                log(f"[rep {k}] swapped in memory ({len(null_df):,} edges, {t_swap:.1f}s)")
+            else:
+                null_df.to_csv(rep_path, index=False)
+                rep_files.append(str(rep_path))
+                log(f"[rep {k}] swapped + wrote {rep_path.name} "
+                    f"({len(null_df):,} edges, {t_swap:.1f}s swap, "
+                    f"{time.time() - t0 - t_swap:.1f}s write)")
             rep_edges = null_df[COLS].to_numpy(dtype=object)
-        rep_files.append(str(rep_path))
+            del null_df
         if k == 0:  # canonical R2 file so lib_eval / run_baselines resolve R2
             canon = splits_dir / R2_CANONICAL_NAME
-            pd.DataFrame(rep_edges, columns=COLS).to_csv(canon, index=False)
-            log(f"[rep 0] also wrote canonical {canon.name}")
+            # The canonical file is a FROZEN artifact: its sha256 is registered in
+            # split_manifest.json and every published R2 number (Table 2's KGE column,
+            # the degree-stratified analysis, the full-ranking robustness run) was
+            # computed on it. This script does NOT reproduce it bit-for-bit -- igraph
+            # seeds its own RNG, so rep 0 here is a statistically equivalent but
+            # different rewiring. Overwriting it would silently invalidate those
+            # results, so an existing file is left alone unless --force-canonical.
+            if canon.exists() and not args.force_canonical:
+                log(f"[rep 0] canonical {canon.name} already exists; leaving it untouched "
+                    f"(pass --force-canonical to regenerate, which invalidates every "
+                    f"published R2 number and the split_manifest.json hash)")
+            else:
+                pd.DataFrame(rep_edges, columns=COLS).to_csv(canon, index=False)
+                log(f"[rep 0] wrote canonical {canon.name}")
+
+        t0 = time.time()
+        n_rec = count_recreated_test_edges(rep_edges, test_lookup)
+        recreated.append(n_rec)
+        log(f"[rep {k}] recreates {n_rec}/{len(test0):,} test triples "
+            f"({100 * n_rec / len(test0):.2f}%, {time.time() - t0:.1f}s)")
 
         t0 = time.time()
         m = score_methods(rep_edges, train0, test0, hubs0, pools, known,
@@ -358,6 +416,20 @@ def main():
             null_metrics[name].append(m[name])
         log(f"[rep {k}] scored ({time.time() - t0:.1f}s): "
             + "  ".join(f"{n}={m[n]['MRR']:.4f}" for n in methods))
+        del rep_edges  # the replicate itself is not needed past this point
+
+    # -- the frozen canonical graph's own recreation count -------------------- #
+    # Measured on the file, not on replicate 0, because the two are different draws.
+    # This is the number the manuscript quotes for the canonical rewiring.
+    canon_path = splits_dir / R2_CANONICAL_NAME
+    canon_recreated = None
+    if canon_path.exists():
+        t0 = time.time()
+        canon_recreated = count_recreated_test_edges(
+            lib_eval._load_edges(canon_path), test_lookup)
+        log(f"canonical {R2_CANONICAL_NAME} recreates {canon_recreated}/{len(test0):,} "
+            f"test triples ({100 * canon_recreated / len(test0):.2f}%, "
+            f"{time.time() - t0:.1f}s)")
 
     # -- aggregate: permutation p-value per method --------------------------- #
     N = args.replicates
@@ -413,6 +485,23 @@ def main():
         "n_test_edges": int(len(test0)),
         "canonical_R2_file": R2_CANONICAL_NAME,
         "replicate_files": rep_files,
+        "replicates_written": not args.no_write_replicates,
+        # How often a degree-preserving swap happens to put a held-out test triple back
+        # into the scoring adjacency. Only ever helps the null, so the test stays
+        # conservative; the manuscript discloses the distribution.
+        "recreated_test_edges": {
+            "per_rep": [int(x) for x in recreated],
+            "mean": float(np.mean(recreated)) if recreated else 0.0,
+            "min": int(np.min(recreated)) if recreated else 0,
+            "max": int(np.max(recreated)) if recreated else 0,
+            "mean_frac": float(np.mean(recreated) / len(test0)) if recreated else 0.0,
+            "min_frac": float(np.min(recreated) / len(test0)) if recreated else 0.0,
+            "max_frac": float(np.max(recreated) / len(test0)) if recreated else 0.0,
+            # The frozen canonical R2 graph, measured on the file itself. It is a
+            # separate draw from replicate 0, so it gets its own count.
+            "canonical_file": canon_recreated,
+            "n_test_edges": int(len(test0)),
+        },
         "eval_protocol": "pools/known/negatives(seed) built once from R0; only the scoring "
                          "adjacency changes per replicate.",
         "degree_sequence_preserved": True,  # asserted per replicate in build_replicate
@@ -433,6 +522,13 @@ def main():
         print(f"{name:24s} {mo['real_R0_MRR']:8.4f} {mo['null_MRR_mean']:10.4f} "
               f"{mo['null_MRR_sd']:8.4f} {mo['real_minus_null_mean']:10.4f} "
               f"{mo['p_value']:14.3f}")
+    rec = payload["recreated_test_edges"]
+    print(f"\nTest triples recreated by the rewiring: mean {rec['mean']:.1f}/{len(test0):,} "
+          f"({100 * rec['mean_frac']:.2f}%), range {rec['min']}-{rec['max']} "
+          f"({100 * rec['min_frac']:.2f}-{100 * rec['max_frac']:.2f}%)"
+          + (f"; canonical R2 file {rec['canonical_file']} "
+             f"({100 * rec['canonical_file'] / len(test0):.2f}%)."
+             if rec["canonical_file"] is not None else "."))
     print("\nInterpretation: a large real-null gap (small p) = genuine structure beyond "
           "degree;\na small gap (large p) = the R0 performance was mostly degree.")
     log("DONE.")

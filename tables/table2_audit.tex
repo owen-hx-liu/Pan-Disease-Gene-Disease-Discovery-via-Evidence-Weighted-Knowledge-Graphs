@@ -1,21 +1,23 @@
-\begin{table}[t]
+\begin{table}[H]
 \centering
-\caption{Leakage audit on the held-out human gene--disease test edges (mean $\pm$ SD over 3 seeds; sampled 50 type-matched negatives). MRR is shown for every regime; AUROC and Hits@10 at R0 expose the ranking-vs-AUROC dissociation. The degree-preserving null (R2) is the only regime that materially reduces performance; redundancy (R1) and orthology (R3) are flat. AUROC for KGE is type-matched, comparable to the baselines' negatives.}
+\caption{Leakage audit on the held-out human gene--disease test edges (n = 4,228; mean $\pm$ SD over 3 seeds, 42/1/7). Columns 2--8 use the sampled protocol, 50 type-matched negatives per edge, which is what application papers report and which this audit treats as an inflated baseline rather than as a measure of model quality. The two right-hand columns give the same cells under filtered full ranking against the entire disease pool ($\approx$14,300 candidates); the full grid is S1 Table. The degree-preserving null (R2) is the only regime that materially reduces performance under either protocol, and it reduces it two to three times more under full ranking; redundancy (R1) and orthology (R3) are flat for the topological arm. AUROC for KGE is type-matched, comparable to the baselines' negatives. Statistics: 95\% bootstrap confidence intervals from 1,000 resamples over the per-edge reciprocal ranks; between-method and between-regime comparisons are two-sided paired bootstraps on aligned per-edge values; significance threshold $\alpha = 0.05$.}
 \label{tab:audit}
-\begin{tabular}{lrrrrrrr}
+\begin{tabular}{lrrrrrrrrr}
 \toprule
-Method & MRR R0 & MRR R1 & MRR R2 & MRR R3 & $\Delta$MRR R0$\to$R2 & AUROC R0 & Hits@10 R0 \\
+Method & MRR R0 & MRR R1 & MRR R2 & MRR R3 & $\Delta$MRR R0$\to$R2 & AUROC R0 & Hits@10 R0 & Full-rank MRR R0 & Full-rank $\Delta$R0$\to$R2 \\
 \midrule
-Random & 0.091 $\pm$ 0.003 & 0.091 $\pm$ 0.003 & 0.091 $\pm$ 0.003 & 0.091 $\pm$ 0.003 & +0\% & 0.503 $\pm$ 0.001 & 0.199 $\pm$ 0.002 \\
-CommonNeighbors & 0.441 $\pm$ 0.001 & 0.442 $\pm$ 0.001 & 0.247 $\pm$ 0.001 & 0.443 $\pm$ 0.002 & -44\% & 0.736 $\pm$ 0.000 & 0.522 $\pm$ 0.001 \\
-AdamicAdar & 0.459 $\pm$ 0.000 & 0.459 $\pm$ 0.002 & 0.262 $\pm$ 0.000 & 0.460 $\pm$ 0.003 & -43\% & 0.738 $\pm$ 0.000 & 0.528 $\pm$ 0.001 \\
-Jaccard & 0.397 $\pm$ 0.001 & 0.398 $\pm$ 0.002 & 0.201 $\pm$ 0.001 & 0.399 $\pm$ 0.001 & -49\% & 0.690 $\pm$ 0.001 & 0.474 $\pm$ 0.002 \\
-PreferentialAttachment & 0.587 $\pm$ 0.002 & 0.582 $\pm$ 0.001 & 0.589 $\pm$ 0.002 & 0.581 $\pm$ 0.002 & +0\% & 0.794 $\pm$ 0.000 & 0.774 $\pm$ 0.001 \\
-TransE & 0.799 $\pm$ 0.000 & 0.750 $\pm$ 0.004 & 0.611 $\pm$ 0.004 & 0.800 $\pm$ 0.002 & -24\% & 0.962 $\pm$ 0.001 & 0.975 $\pm$ 0.001 \\
-RotatE & 0.827 $\pm$ 0.007 & 0.757 $\pm$ 0.004 & 0.655 $\pm$ 0.004 & 0.830 $\pm$ 0.004 & -21\% & 0.967 $\pm$ 0.001 & 0.974 $\pm$ 0.000 \\
+Random & 0.091 $\pm$ 0.003 & 0.091 $\pm$ 0.003 & 0.091 $\pm$ 0.003 & 0.091 $\pm$ 0.003 & +0\% & 0.503 $\pm$ 0.001 & 0.199 $\pm$ 0.002 & 0.001 & +0\% \\
+Common-Neighbors & 0.441 $\pm$ 0.001 & 0.442 $\pm$ 0.001 & 0.247 $\pm$ 0.001 & 0.443 $\pm$ 0.002 & -44\% & 0.736 $\pm$ 0.000 & 0.522 $\pm$ 0.001 & 0.118 & -88\% \\
+Adamic-Adar & 0.459 $\pm$ 0.000 & 0.459 $\pm$ 0.002 & 0.262 $\pm$ 0.000 & 0.460 $\pm$ 0.003 & -43\% & 0.738 $\pm$ 0.000 & 0.528 $\pm$ 0.001 & 0.133 & -89\% \\
+Jaccard & 0.397 $\pm$ 0.001 & 0.398 $\pm$ 0.002 & 0.201 $\pm$ 0.001 & 0.399 $\pm$ 0.001 & -49\% & 0.690 $\pm$ 0.001 & 0.474 $\pm$ 0.002 & 0.106 & -91\% \\
+Preferential-Attachment & 0.587 $\pm$ 0.002 & 0.582 $\pm$ 0.001 & 0.589 $\pm$ 0.002 & 0.581 $\pm$ 0.002 & +0\% & 0.794 $\pm$ 0.000 & 0.774 $\pm$ 0.001 & 0.025 & +1\% \\
+TransE & 0.799 $\pm$ 0.000 & 0.750 $\pm$ 0.004 & 0.611 $\pm$ 0.004 & 0.800 $\pm$ 0.002 & -24\% & 0.962 $\pm$ 0.001 & 0.975 $\pm$ 0.001 & 0.079 & -71\% \\
+RotatE & 0.827 $\pm$ 0.007 & 0.757 $\pm$ 0.004 & 0.655 $\pm$ 0.004 & 0.830 $\pm$ 0.004 & -21\% & 0.967 $\pm$ 0.001 & 0.974 $\pm$ 0.000 & 0.108 & -70\% \\
+DistMult & 0.669 $\pm$ 0.007 & 0.591 $\pm$ 0.010 & 0.426 $\pm$ 0.005 & 0.689 $\pm$ 0.006 & -36\% & 0.937 $\pm$ 0.002 & 0.934 $\pm$ 0.004 & 0.050 & -78\% \\
+ComplEx & 0.685 $\pm$ 0.004 & 0.594 $\pm$ 0.003 & 0.431 $\pm$ 0.027 & 0.692 $\pm$ 0.007 & -37\% & 0.918 $\pm$ 0.004 & 0.913 $\pm$ 0.007 & 0.055 & -82\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-\noindent\footnotesize Paired-bootstrap MRR difference (AdamicAdar $-$ method; R0, seed 42, 1,000 resamples, n=4,228): CommonNeighbors $\Delta$=+0.017 (p$<$0.001); Jaccard $\Delta$=+0.060 (p$<$0.001); PreferentialAttachment $\Delta$=-0.130 (p$<$0.001); Random $\Delta$=+0.365 (p$<$0.001). All significant at p$<$0.001 (two-sided).\normalsize
+\noindent\footnotesize Paired-bootstrap MRR difference (Adamic-Adar $-$ method; R0, seed 42, 1,000 resamples, n=4,228): Common-Neighbors $\Delta$=+0.017 (p$<$0.001); Jaccard $\Delta$=+0.060 (p$<$0.001); Preferential-Attachment $\Delta$=-0.130 (p$<$0.001); Random $\Delta$=+0.365 (p$<$0.001). All significant at p$<$0.001 (two-sided).\normalsize
 

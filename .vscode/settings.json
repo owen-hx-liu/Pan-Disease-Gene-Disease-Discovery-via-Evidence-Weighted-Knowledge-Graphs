@@ -1,0 +1,10 @@
+{
+  // Build main.tex with latexmk (it reads manuscript/latex/.latexmkrc) on save.
+  "latex-workshop.latex.autoBuild.run": "onSave",
+  // Tidy the .aux/.log clutter after a successful build; keeps the PDF.
+  "latex-workshop.latex.autoClean.run": "onBuilt",
+  // Show the compiled PDF in a tab next to the source.
+  "latex-workshop.view.pdf.viewer": "tab",
+  // New files use LF, matching .gitattributes, so diffs stay clean across machines.
+  "files.eol": "\n"
+}

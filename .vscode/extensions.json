@@ -1,0 +1,7 @@
+{
+  // When a collaborator opens this repo, VS Code offers to install these.
+  "recommendations": [
+    "James-Yu.latex-workshop",   // compile + preview LaTeX inside VS Code
+    "ms-vsliveshare.vsliveshare" // real-time co-editing (the "Google Docs" part)
+  ]
+}

@@ -1,15 +1,15 @@
-\begin{table}[t]
+\begin{table}[H]
 \centering
-\caption{Degree-null decomposition of R0 ranking performance (10 degree-preserving, type-preserving permutation replicates; R0 evaluation held fixed). The structure column is the residual above what pure node degree explains; the permutation p-value is the fraction of null replicates with MRR $\geq$ the real R0 MRR. Degree sequence preserved: True. PreferentialAttachment sanity: real 0.589 vs null 0.591 (unchanged $\to$ the null preserves the degree sequence).}
+\caption{Degree-null decomposition of R0 ranking performance (200 degree-preserving, type-preserving permutation replicates; R0 evaluation held fixed). The structure column is the residual above what pure node degree explains; the permutation p-value is the add-one empirical estimator $(b+1)/(B+1)$, where $b$ is the number of null replicates with MRR $\geq$ the real R0 MRR. With 200 replicates the add-one estimator is bounded below by $1/(200+1)\approx0.005$, so structural methods (every null replicate below the real MRR) sit at this floor; their residuals nonetheless exceed the null mean by $>$50 null standard deviations. Degree sequence preserved: True. Preferential-Attachment sanity: real 0.589 vs null 0.591 (unchanged $\to$ the null preserves the degree sequence). The permutation test is the coarser of the two instruments reported; the primary significance test for the R0$\to$R2 drop is a two-sided paired bootstrap over the 4,228 aligned per-edge reciprocal ranks. Statistics: 95\% bootstrap confidence intervals from 1,000 resamples over the per-edge reciprocal ranks; between-method and between-regime comparisons are two-sided paired bootstraps on aligned per-edge values; significance threshold $\alpha = 0.05$.}
 \label{tab:degree_null}
 \begin{tabular}{lrrrrr}
 \toprule
 Method & Real R0 MRR & Degree-null MRR & Structure (real$-$null) & Perm. p & Structure > degree? \\
 \midrule
-CommonNeighbors & 0.441 & 0.249 $\pm$ 0.003 & +0.192 & <0.001 & yes \\
-AdamicAdar & 0.458 & 0.264 $\pm$ 0.004 & +0.194 & <0.001 & yes \\
-Jaccard & 0.398 & 0.202 $\pm$ 0.003 & +0.196 & <0.001 & yes \\
-PreferentialAttachment & 0.589 & 0.591 $\pm$ 0.000 & -0.002 & 1.000 & no \\
+Common-Neighbors & 0.441 & 0.248 $\pm$ 0.003 & +0.193 & 0.005 & yes \\
+Adamic-Adar & 0.458 & 0.262 $\pm$ 0.004 & +0.196 & 0.005 & yes \\
+Jaccard & 0.398 & 0.202 $\pm$ 0.003 & +0.196 & 0.005 & yes \\
+Preferential-Attachment & 0.589 & 0.591 $\pm$ 0.000 & -0.002 & 1.000 & no \\
 Random & 0.094 & 0.094 $\pm$ 0.000 & -0.000 & 1.000 & no \\
 \bottomrule
 \end{tabular}

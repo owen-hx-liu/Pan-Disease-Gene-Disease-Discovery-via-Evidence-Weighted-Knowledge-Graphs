@@ -12,5 +12,5 @@
 | Degree max | 20,662 | 23,879 |
 | Gene nodes | 336,460 | 19,145 |
 | Disease nodes | 14,339 | 136 |
-| Gene–disease target edges | 42,288 | 12,623 |
+| Gene–disease edges | 42,288 | 12,623 |
 | Orthology edges | 510,703 | 0 (single-species) |

@@ -1,14 +1,49 @@
-\begin{table}[t]
+\begin{table}[H]
 \centering
-\caption{Full-ranking robustness of the leakage regimes. Each held-out human gene--disease test edge is scored by the trained KGE and its true disease ranked against the entire type-matched disease pool (size $D$ per regime), excluding the gene's known training and test tails (filtered) -- the run\_robustness-comparable protocol, stricter than the 50 sampled negatives of Table~\ref{tab:audit}. Mean $\pm$ SD over 3 seed(s) (1, 7, 42). $\Delta$MRR vs R0 is the per-model change from the standard regime. Absolute MRR is far lower than under sampled negatives (the true disease competes with $\sim$14k pool diseases rather than 50), but the \emph{ordering} of the regime effects is preserved: the R2 degree-preserving null causes by far the largest drop while R1 (redundancy) causes only a small one -- the same pattern as the sampled-negative audit -- so the regime effects are not artifacts of negative sampling. 30 cold-start test genes (absent from the training vocabulary) receive the worst possible rank.}
+\caption{Full-ranking robustness of the leakage regimes. Each held-out human gene--disease test edge has its true disease ranked against the entire type-matched disease pool (size $D$ per regime), excluding the gene's known training and test tails (filtered) -- the strictest protocol available, and stricter than the 50 sampled negatives of Table~\ref{tab:audit}. \textbf{Panel A} is the knowledge-graph embedding arm (mean $\pm$ SD over 3 seeds, 1, 7, 42); \textbf{Panel B} is the topological arm. $\Delta$MRR vs R0 is the per-method change from the standard regime. Absolute MRR is far lower than under sampled negatives (the true disease competes with $\sim$14k pool diseases rather than 50), but the \emph{ordering} of the regime effects is preserved throughout: the R2 degree-preserving null causes by far the largest drop in both arms, while R3 (orthology-blocked) lowers no method's score in either -- the same pattern as the sampled-negative audit -- so the regime effects are not artifacts of negative sampling. Panel A $\Delta$MRR vs R0: R1 -32\% (ComplEx), -22\% (DistMult), -19\% (RotatE), -10\% (TransE); R2 -82\% (ComplEx), -78\% (DistMult), -70\% (RotatE), -71\% (TransE); R3 +8\% (ComplEx), +16\% (DistMult), +3\% (RotatE), +2\% (TransE). R2 costs every embedding model 70-82\% of its MRR, and R1 (redundancy) is the regime that separates the two arms: it costs the KGE models 10-32\% of MRR against only 2\% for the overlap heuristics, which is the arm-specific redundancy leak of the sampled-negative audit reappearing at larger magnitude under the stricter protocol. R3 lowers no model's MRR under this protocol either, but the size of the gain is not uniform: the translational pair stays within +3\% while the bilinear pair rises 8-16\%, so blocking the cross-species bridges is mildly helpful to the bilinear models rather than merely uninformative -- a stronger refutation of the orthology-leak hypothesis than a flat null, and in the opposite direction from leakage. Panel B is a single deterministic run per regime (the topological scorers carry no seed; the Random control is the analytic chance floor), so no SD is reported, and AUROC is not defined for the ranking-only protocol. n=4,228 test edges; ranks were verified against a brute-force loop of the same scorers over the full pool on 150 sampled edges per regime (exact agreement). Under full ranking the R0$\to$R2 collapse of the overlap heuristics deepens to 88-91\% (it is 43-49\% under 50 sampled negatives), while Preferential-Attachment moves by +1\%: the degree-only control is unmoved by the degree-preserving null under the strictest protocol, so the sampled-negative effect sizes are lower bounds. 30 cold-start test genes (absent from the training vocabulary) receive the worst possible rank. Statistics: 95\% bootstrap confidence intervals from 1,000 resamples over the per-edge reciprocal ranks; between-method and between-regime comparisons are two-sided paired bootstraps on aligned per-edge values; significance threshold $\alpha = 0.05$.}
 \label{tab:fullrank_robustness}
 \begin{tabular}{lrrrrrrrr}
 \toprule
 Model & Regime & Pool D & MRR & Hits@1 & Hits@3 & Hits@10 & AUROC (type) & $\Delta$MRR vs R0 \\
 \midrule
+\multicolumn{9}{l}{\textit{Panel A. Knowledge-graph embedding}} \\
 TransE & R0 standard & 14,307 & 0.079 $\pm$ 0.001 & 0.036 $\pm$ 0.001 & 0.072 $\pm$ 0.002 & 0.150 $\pm$ 0.003 & 0.962 $\pm$ 0.002 & ref \\
 TransE & R1 redundancy & 14,252 & 0.071 $\pm$ 0.003 & 0.031 $\pm$ 0.002 & 0.066 $\pm$ 0.002 & 0.138 $\pm$ 0.008 & 0.954 $\pm$ 0.001 & -10\% \\
 TransE & R2 degree-null & 14,307 & 0.023 $\pm$ 0.002 & 0.005 $\pm$ 0.001 & 0.014 $\pm$ 0.003 & 0.042 $\pm$ 0.004 & 0.879 $\pm$ 0.001 & -71\% \\
+TransE & R3 orthology-blocked & 14,137 & 0.080 $\pm$ 0.004 & 0.034 $\pm$ 0.003 & 0.077 $\pm$ 0.005 & 0.155 $\pm$ 0.008 & 0.963 $\pm$ 0.000 & +2\% \\
+RotatE & R0 standard & 14,307 & 0.108 $\pm$ 0.004 & 0.053 $\pm$ 0.002 & 0.107 $\pm$ 0.003 & 0.202 $\pm$ 0.003 & 0.967 $\pm$ 0.001 & ref \\
+RotatE & R1 redundancy & 14,252 & 0.088 $\pm$ 0.002 & 0.037 $\pm$ 0.002 & 0.086 $\pm$ 0.002 & 0.178 $\pm$ 0.002 & 0.955 $\pm$ 0.001 & -19\% \\
+RotatE & R2 degree-null & 14,307 & 0.032 $\pm$ 0.002 & 0.006 $\pm$ 0.001 & 0.021 $\pm$ 0.001 & 0.067 $\pm$ 0.007 & 0.889 $\pm$ 0.000 & -70\% \\
+RotatE & R3 orthology-blocked & 14,137 & 0.111 $\pm$ 0.003 & 0.055 $\pm$ 0.003 & 0.110 $\pm$ 0.003 & 0.211 $\pm$ 0.004 & 0.969 $\pm$ 0.001 & +3\% \\
+DistMult & R0 standard & 14,307 & 0.050 $\pm$ 0.003 & 0.020 $\pm$ 0.002 & 0.045 $\pm$ 0.004 & 0.098 $\pm$ 0.005 & 0.937 $\pm$ 0.002 & ref \\
+DistMult & R1 redundancy & 14,252 & 0.039 $\pm$ 0.002 & 0.014 $\pm$ 0.002 & 0.032 $\pm$ 0.004 & 0.076 $\pm$ 0.006 & 0.897 $\pm$ 0.002 & -22\% \\
+DistMult & R2 degree-null & 14,307 & 0.011 $\pm$ 0.001 & 0.001 $\pm$ 0.001 & 0.006 $\pm$ 0.001 & 0.020 $\pm$ 0.002 & 0.832 $\pm$ 0.002 & -78\% \\
+DistMult & R3 orthology-blocked & 14,137 & 0.058 $\pm$ 0.003 & 0.026 $\pm$ 0.003 & 0.050 $\pm$ 0.003 & 0.108 $\pm$ 0.002 & 0.943 $\pm$ 0.001 & +16\% \\
+ComplEx & R0 standard & 14,307 & 0.055 $\pm$ 0.006 & 0.020 $\pm$ 0.005 & 0.046 $\pm$ 0.008 & 0.114 $\pm$ 0.008 & 0.918 $\pm$ 0.004 & ref \\
+ComplEx & R1 redundancy & 14,252 & 0.037 $\pm$ 0.002 & 0.012 $\pm$ 0.001 & 0.028 $\pm$ 0.001 & 0.072 $\pm$ 0.005 & 0.891 $\pm$ 0.004 & -32\% \\
+ComplEx & R2 degree-null & 14,307 & 0.010 $\pm$ 0.001 & 0.001 $\pm$ 0.000 & 0.004 $\pm$ 0.000 & 0.017 $\pm$ 0.003 & 0.799 $\pm$ 0.006 & -82\% \\
+ComplEx & R3 orthology-blocked & 14,137 & 0.059 $\pm$ 0.006 & 0.022 $\pm$ 0.004 & 0.052 $\pm$ 0.006 & 0.118 $\pm$ 0.014 & 0.917 $\pm$ 0.009 & +8\% \\
+\multicolumn{9}{l}{\textit{Panel B. Topological baselines}} \\
+Random & R0 standard & 14,307 & 0.001 & 0.000 & 0.000 & 0.001 & -- & ref \\
+Random & R1 redundancy & 14,252 & 0.001 & 0.000 & 0.000 & 0.001 & -- & +0\% \\
+Random & R2 degree-null & 14,307 & 0.001 & 0.000 & 0.000 & 0.001 & -- & +0\% \\
+Random & R3 orthology-blocked & 14,137 & 0.001 & 0.000 & 0.000 & 0.001 & -- & +1\% \\
+Common-Neighbors & R0 standard & 14,307 & 0.118 & 0.076 & 0.125 & 0.192 & -- & ref \\
+Common-Neighbors & R1 redundancy & 14,252 & 0.116 & 0.074 & 0.123 & 0.191 & -- & -2\% \\
+Common-Neighbors & R2 degree-null & 14,307 & 0.014 & 0.001 & 0.007 & 0.049 & -- & -88\% \\
+Common-Neighbors & R3 orthology-blocked & 14,137 & 0.117 & 0.075 & 0.123 & 0.191 & -- & -1\% \\
+Adamic-Adar & R0 standard & 14,307 & 0.133 & 0.091 & 0.143 & 0.214 & -- & ref \\
+Adamic-Adar & R1 redundancy & 14,252 & 0.130 & 0.088 & 0.140 & 0.211 & -- & -2\% \\
+Adamic-Adar & R2 degree-null & 14,307 & 0.014 & 0.000 & 0.008 & 0.048 & -- & -89\% \\
+Adamic-Adar & R3 orthology-blocked & 14,137 & 0.132 & 0.090 & 0.143 & 0.213 & -- & -1\% \\
+Jaccard & R0 standard & 14,307 & 0.106 & 0.079 & 0.113 & 0.150 & -- & ref \\
+Jaccard & R1 redundancy & 14,252 & 0.104 & 0.077 & 0.112 & 0.150 & -- & -2\% \\
+Jaccard & R2 degree-null & 14,307 & 0.009 & 0.003 & 0.005 & 0.020 & -- & -91\% \\
+Jaccard & R3 orthology-blocked & 14,137 & 0.106 & 0.079 & 0.113 & 0.151 & -- & -0\% \\
+Preferential-Attachment & R0 standard & 14,307 & 0.025 & 0.000 & 0.000 & 0.081 & -- & ref \\
+Preferential-Attachment & R1 redundancy & 14,252 & 0.025 & 0.000 & 0.000 & 0.081 & -- & -0\% \\
+Preferential-Attachment & R2 degree-null & 14,307 & 0.025 & 0.000 & 0.000 & 0.081 & -- & +1\% \\
+Preferential-Attachment & R3 orthology-blocked & 14,137 & 0.025 & 0.000 & 0.000 & 0.080 & -- & -1\% \\
 \bottomrule
 \end{tabular}
 \end{table}

@@ -75,6 +75,18 @@ Usage:
     # add the R0 dim x epochs sweep:
     python scripts/run_kge.py --sweep
 
+    # train-fit diagnostic: is a regime's collapse an optimization or a generalization
+    # failure? Scores 4000 sampled TRAINING edges alongside the test edges.
+    python scripts/run_kge.py --models TransE DistMult --regimes R0 R2 --seeds 42 \
+        --train-fit-n 4000 --results-dir data/processed/results/kge_r2_sweep/trainfit
+
+    # matched hyperparameter sweep on TWO regimes (the collapsed one AND its reference),
+    # which is what it takes to show a cross-regime gap is not a tuning artifact:
+    python scripts/run_kge.py --models TransE --regimes R0 R2 --seeds 42 --sweep-only \
+        --sweep-regimes R0 R2 --sweep-dims 64 --sweep-epochs 100 \
+        --sweep-lrs 1e-3 3e-3 1e-2 --sweep-negs 16 64 \
+        --results-dir data/processed/results/kge_r2_sweep
+
     # merge whatever runs have completed into kge_summary.json:
     python scripts/run_kge.py --merge-only
 """
@@ -120,48 +132,78 @@ def model_config():
     """Return {name: cfg} for the benchmark models. Imported lazily so the
     module loads without pykeen.
 
-    TransE (translational) uses SLCWA + self-adversarial negative sampling (NSSA;
-    Sun et al., ICLR 2019) -- the standard strong TransE recipe.
+    All four models share SLCWA, 16 negatives per positive, dim 64, batch 16,384 and 300
+    epochs. Each family keeps its own published objective: the translational models use
+    self-adversarial negative sampling (NSSA, margin 9; Sun et al., ICLR 2019) and the
+    bilinear models use the logistic/softplus loss (Trouillon et al., ICML 2016; Yang et
+    al., ICLR 2015). The one genuine intervention is disabling the bilinear models'
+    REGULARIZER, which is a correction of a PyKEEN default rather than a tuned
+    hyperparameter (see below).
 
-    ComplEx (bilinear) uses SLCWA + the LOGISTIC / softplus loss (Trouillon et al.,
-    ICML 2016 -- the canonical ComplEx objective). NSSA does NOT work for ComplEx on
-    this graph: its margin-sigmoid saturates against ComplEx's unbounded scores and the
-    model collapses to chance -- verified empirically at full scale (flat loss ~4.50 for
-    the last 150 of 300 epochs, MRR ~0.10, AUROC ~0.50 across 3 seeds on R0). The earlier
-    "ComplEx learns fine on NSSA" note was never validated past 5-epoch smokes; it is
-    false here. Softplus does not saturate and restores learning. With softplus the extra
-    negatives are no longer needed for stability, so ComplEx uses 16 negatives (parity
-    with TransE); a one-cell 16-vs-32 check on R0 documents that the count is immaterial.
-    Full-softmax LCWA (Lacroix+2018) is intractable at 451k entities (see module docstring).
+    Why the bilinear models set regularizer=None
+    --------------------------------------------
+    PyKEEN attaches a different default regularizer to each model:
 
-    DistMult (bilinear; Yang et al., ICLR 2015) is the third KGE baseline. It is the
-    diagonal-real special case of ComplEx (half the parameters, no imaginary part), so it
-    inherits the same failure mode -- its unbounded bilinear scores saturate NSSA's
-    margin-sigmoid -- and therefore gets the SAME non-saturating softplus recipe as
-    ComplEx, at SLCWA parity with the translational models (16 negs). Being the lighter
-    real-valued model it is the more tractable bilinear at 452k entities, which is why we
-    add it (not ComplEx) as the reported third row: if any bilinear model trains here, it
-    is this one. If it too collapses to chance (MRR ~= 0.09, AUROC ~= 0.50), that is
-    reported honestly as a caveat rather than a clean result, and a canonical-bilinear
-    rescue (LCWA 1-vs-all cross-entropy, Lacroix+2018) is available via --distmult-loop
-    lcwa (slice-tractable; see train_model / --lcwa-slice-size).
+        TransE    entity_constrainer=normalize             regularizer: NONE
+        RotatE    relation_constrainer=complex_normalize    regularizer: NONE
+        DistMult  entity_constrainer=normalize             relation LpRegularizer w=0.1
+        ComplEx   (no constrainer)                         entity+relation Lp w=0.01
+
+    DistMult clamps entity embeddings to the unit sphere, so |score| = |<h, r, t>| <= |r|
+    and the relation vector is the ONLY source of score scale. An unopposed L2 penalty on
+    that vector drives |r| -> 0; once it reaches zero the gradient with respect to the
+    entity embeddings, which is proportional to r (*) t, vanishes and training freezes at
+    the point where every triple scores identically. That is the collapse previously
+    recorded as "loss pinned at 0.6932", which is exactly softplus(0) = ln 2.
+
+    This was verified to be a property of the regularizer and NOT of the training
+    configuration by a single-variable sweep (scripts/bilinear_sweep_record.py, output in
+    results/kge/bilinear_sweep.md): with the default regularizer in place, DistMult
+    collapses under every combination of loss (softplus / NSSA / margin-ranking), batch
+    (16,384 / 4,096), negatives (16 / 64) and learning rate (1e-3 / 1e-2) -- in each case
+    the loss sits at its own zero-gap value (softplus -> ln 2; NSSA margin 9 -> 4.5;
+    margin-ranking 1.0 -> 1.0) and the target relation norm falls 1.0 -> <0.006 within two
+    epochs. Setting regularizer=None therefore brings the bilinear models to PARITY with
+    the unregularized TransE and RotatE; it does not give them extra freedom.
+
+    Outcome (R0, seed 42, this graph). Both bilinear models train once the regularizer is
+    off, but ComplEx additionally requires softplus and will NOT train under NSSA:
+      * DistMult, regularizer off: 5 epochs already reach MRR 0.55 (softplus) / 0.53
+        (NSSA) against a 0.09 random baseline, on the same trajectory as RotatE (MRR 0.47
+        at 15 epochs). Either loss works.
+      * ComplEx, regularizer off + softplus: 60 epochs reach MRR 0.5081, Hits@10 0.7789,
+        type-matched AUROC 0.860.
+      * ComplEx, regularizer off + NSSA: collapses. Loss falls 16.8 -> 4.51 over 11
+        epochs then pins at 4.5004 from epoch 21 through 60, which is the NSSA margin-9
+        zero-gap value; 60 epochs give MRR 0.0797 / AUROC 0.500, i.e. chance. This is why
+        the bilinear models keep their own published objective rather than the
+        translational one.
+
+    Reading the loss value is NOT a sufficient convergence check under softplus. Because
+    softplus(x) ~= ln 2 + x/2 near zero, a model whose scores are small but consistently
+    ORDERED sits at a loss of ~0.693 while ranking perfectly well: ComplEx above plateaus
+    at 0.6933 and still reaches MRR 0.51. Collapse must be diagnosed from the
+    positive-minus-negative score gap and the embedding norms (as in bilinear_sweep.md),
+    not from the loss curve alone.
     """
     from pykeen.models import TransE, ComplEx, RotatE, DistMult
     nssa = dict(loss="nssa", loss_kwargs=dict(margin=9.0, adversarial_temperature=1.0))
     return {
         "TransE": dict(cls=TransE, num_negs=16, ref="Bordes+2013; NSSA Sun+2019", **nssa),
         # RotatE (rotational family): NSSA is its native training objective (Sun+2019),
-        # and its geometry is close to TransE's, so it trains tractably under SLCWA here --
-        # unlike the bilinear ComplEx, which collapses to a trivial optimum under every
-        # tractable loss and needs intractable full-LCWA (documented; see PAPER notes).
+        # and its geometry is close to TransE's, so it trains tractably under SLCWA here.
         "RotatE": dict(cls=RotatE, num_negs=16, ref="Sun+2019 (RotatE); NSSA", **nssa),
+        # The two bilinear models take the IDENTICAL recipe, plus regularizer=None to
+        # undo PyKEEN's per-model default (see the docstring above: it is what collapses
+        # DistMult to the all-scores-equal solution, and TransE/RotatE carry no
+        # regularizer at all, so None is parity rather than special treatment).
+        # Overridable via --{complex,distmult}-{negs,loss,loop,margin} and --regularizer.
         "ComplEx": dict(cls=ComplEx, num_negs=16, loss="softplus",
-                        ref="Trouillon+2016 (logistic/softplus loss)"),
-        # DistMult: diagonal-real special case of ComplEx -> same softplus recipe, SLCWA
-        # parity (16 negs). NSSA saturates on bilinear scores (documented for ComplEx);
-        # softplus does not. Overridable via --distmult-{negs,loss,loop,margin}.
+                        regularizer=None, regularizer_kwargs=None,
+                        ref="Trouillon+2016 (logistic/softplus loss); regularizer disabled"),
         "DistMult": dict(cls=DistMult, num_negs=16, loss="softplus",
-                         ref="Yang+2015 (DistMult); softplus/logistic loss (bilinear; NSSA saturates)"),
+                         regularizer=None, regularizer_kwargs=None,
+                         ref="Yang+2015 (DistMult); softplus/logistic loss; regularizer disabled"),
     }
 
 
@@ -171,9 +213,11 @@ def _build_model(cfg, tf, dim, seed, device):
         kw["loss"] = cfg["loss"]
     if cfg.get("loss_kwargs"):
         kw["loss_kwargs"] = cfg["loss_kwargs"]
-    if cfg.get("regularizer"):
+    # "regularizer" present-but-None is meaningful (disable the model's default), so test
+    # for the key rather than for truthiness.
+    if "regularizer" in cfg:
         kw["regularizer"] = cfg["regularizer"]
-        kw["regularizer_kwargs"] = cfg["regularizer_kwargs"]
+        kw["regularizer_kwargs"] = cfg.get("regularizer_kwargs")
     return cfg["cls"](**kw).to(device)
 
 
@@ -238,11 +282,19 @@ def train_model(cfg, tf, dim, epochs, seed, device, batch, tag="", progress_secs
     whose cfg sets ``loop="lcwa"`` trains 1-vs-all (LCWA), slicing the 451k-entity target
     dimension (``lcwa_slice``) so the all-entity scores fit on the GPU -- the canonical
     tractable recipe for bilinear models (ComplEx/DistMult) at scale. On CUDA OOM we halve
-    the batch (and LCWA slice) and retry a few times."""
+    the batch (and LCWA slice) and retry a few times.
+
+    The optimizer is taken from ``cfg['optimizer']`` / ``cfg['lr']`` when set, otherwise
+    PyKEEN's default (Adam, lr 1e-3). The bilinear models need this knob: their canonical
+    published recipes use a substantially larger step size than the translational models.
+    """
     import torch, random
     from pykeen.training import SLCWATrainingLoop, LCWATrainingLoop
     is_lcwa = cfg.get("loop", "slcwa") == "lcwa"
     slice_size = lcwa_slice if is_lcwa else None
+    opt_kw = dict(optimizer=cfg.get("optimizer", "adam"))
+    if cfg.get("lr") is not None:
+        opt_kw["optimizer_kwargs"] = dict(lr=cfg["lr"])
 
     attempt = 0
     while True:
@@ -252,20 +304,28 @@ def train_model(cfg, tf, dim, epochs, seed, device, batch, tag="", progress_secs
         model = _build_model(cfg, tf, dim, seed, device)
         try:
             if is_lcwa:
-                loop = LCWATrainingLoop(model=model, triples_factory=tf)
+                loop = LCWATrainingLoop(model=model, triples_factory=tf, **opt_kw)
                 train_kw = dict(batch_size=batch, slice_size=slice_size)
             else:
                 loop = SLCWATrainingLoop(
                     model=model, triples_factory=tf, negative_sampler="basic",
-                    negative_sampler_kwargs=dict(num_negs_per_pos=cfg.get("num_negs", 16)))
+                    negative_sampler_kwargs=dict(num_negs_per_pos=cfg.get("num_negs", 16)),
+                    **opt_kw)
                 train_kw = dict(batch_size=batch)
             total_batches = max(1, -(-tf.num_triples // batch))  # ceil(n_triples / batch)
             t0 = time.time()
-            loop.train(triples_factory=tf, num_epochs=epochs,
-                       label_smoothing=cfg.get("label_smoothing", 0.0), use_tqdm=False,
-                       callbacks=_progress_callback(epochs, total_batches, tag, progress_secs),
-                       **train_kw)
-            return model, time.time() - t0, {"batch": batch, "slice_size": slice_size}
+            # PyKEEN's train() returns the per-epoch mean loss list. We KEEP it (it used to
+            # be discarded): the R0-vs-R2 loss trajectory is the direct evidence on whether
+            # optimization behaved differently on the rewired graph, and it costs nothing.
+            losses = loop.train(triples_factory=tf, num_epochs=epochs,
+                                label_smoothing=cfg.get("label_smoothing", 0.0), use_tqdm=False,
+                                callbacks=_progress_callback(epochs, total_batches, tag,
+                                                             progress_secs),
+                                **train_kw)
+            return model, time.time() - t0, {
+                "batch": batch, "slice_size": slice_size,
+                "epoch_losses": [float(x) for x in (losses or [])],
+            }
         except Exception as e:  # noqa: BLE001 -- torch raises AcceleratorError/RuntimeError on OOM
             if not (_is_oom(e) and attempt < 4):
                 raise
@@ -436,6 +496,43 @@ def evaluate_regime(scorer, model, tf, train_edges, regime_name, test_edges, hub
 
 
 # --------------------------------------------------------------------------- #
+# TRAIN-FIT diagnostic (--train-fit-n): did OPTIMIZATION succeed on this graph?
+# --------------------------------------------------------------------------- #
+def sample_train_fit_edges(train_edges, n, seed, target_rel=TARGET_REL):
+    """Sample ``n`` TRAINING edges of the target relation, for a train-fit evaluation.
+
+    Why this exists
+    ---------------
+    A reviewer can object that the R2 (degree-preserving rewired null) collapse is an
+    OPTIMIZATION failure rather than an absence of learnable structure: the
+    hyperparameters were chosen on R0, so perhaps the same recipe simply fails to fit the
+    rewired graph. Test-set metrics alone cannot separate the two, because a model that
+    never fit anything and a model that fit the training graph but cannot generalize from
+    it both score badly on held-out edges.
+
+    Scoring edges the model was TRAINED on separates them. Train fit is an upper bound on
+    what the optimizer achieved: if a model fits R2 training edges about as well as it
+    fits R0 training edges, the optimizer did its job on R2 and the held-out collapse is a
+    GENERALIZATION result -- the rewired graph carries no structure that transfers to
+    unseen edges. If train fit ALSO collapses on R2, optimization genuinely failed and the
+    objection stands.
+
+    The sample is restricted to the target relation so it is the same PREDICTION TASK as
+    the test edges (gene -> disease), differing only in whether the model saw the edge
+    during training; that is the single variable the diagnostic turns on. Under R2 these
+    are the REWIRED gene->disease edges, which is exactly right: the question is whether
+    the model fit the graph it was actually given.
+    """
+    idx = np.nonzero(train_edges[:, 1] == target_rel)[0]
+    if len(idx) == 0:
+        return train_edges[:0]
+    if n and len(idx) > n:
+        rng = np.random.default_rng(seed)
+        idx = np.sort(rng.choice(idx, size=n, replace=False))
+    return train_edges[idx]
+
+
+# --------------------------------------------------------------------------- #
 # Full-ranking evaluation (H1b robustness): rank the true disease against the
 # ENTIRE filtered disease pool, not 50 sampled negatives. This is the KGE analogue
 # of run_robustness.py's baseline "filtered full ranking", so the two are directly
@@ -547,9 +644,18 @@ def _validate_fullrank(scorer, test_edges, known, ranks, n):
 # --------------------------------------------------------------------------- #
 # Merge per-run JSONs -> summary with mean +/- sd over seeds
 # --------------------------------------------------------------------------- #
-def merge_results(results_dir, out_path):
+def merge_results(results_dir, out_path, extra_key_fields=()):
     """Merge every kge_*.json directly under results_dir (non-recursive, so the
-    results/kge/sweep/ subdir is not swept into the headline summary)."""
+    results/kge/sweep/ subdir is not swept into the headline summary).
+
+    ``extra_key_fields`` adds run fields to the aggregation key. It MUST stay empty for
+    the headline summary: make_figures.py and make_tables.py index the aggregate by the
+    literal string f"{model}|{regime}|d64|e300", so changing that format silently breaks
+    every manuscript table and figure. The sweep summary passes ("lr", "num_negs")
+    because its cells differ ONLY in those axes -- without them the sweep configs would
+    be averaged together as though they were repeat seeds of one config, which is exactly
+    the mistake the sweep exists to avoid.
+    """
     runs = []
     # Match per-run files only ("..._seed<k>[...].json"); the "kge_*.json" glob also
     # matched this function's OWN output (kge_summary.json), which has no per-run keys.
@@ -560,13 +666,24 @@ def merge_results(results_dir, out_path):
             continue
         if "model" not in r:      # defensive: skip anything that isn't a per-run record
             continue
-        r = {k: v for k, v in r.items() if k != "reciprocal_ranks"}  # drop big arrays
+        # Drop the per-edge/per-epoch arrays; they live in the per-run JSONs. The
+        # train_fit block carries its own reciprocal_ranks, so slim it too rather than
+        # copying thousands of floats per run into the summary.
+        r = {k: v for k, v in r.items() if k not in ("reciprocal_ranks", "epoch_losses")}
+        if isinstance(r.get("train_fit"), dict):
+            r["train_fit"] = {k: v for k, v in r["train_fit"].items()
+                              if k != "reciprocal_ranks"}
         runs.append(r)
 
     agg: dict = {}
     metrics = ["MRR", "Hits@1", "Hits@3", "Hits@10",
-               "AUROC_random", "AUPRC_random", "AUROC_type", "AUPRC_type"]
-    keyf = lambda r: f"{r['model']}|{r['regime']}|d{r['dim']}|e{r['epochs']}"
+               "AUROC_random", "AUPRC_random", "AUROC_type", "AUPRC_type",
+               "train_fit_MRR", "generalization_gap_MRR"]
+
+    def keyf(r):
+        k = f"{r['model']}|{r['regime']}|d{r['dim']}|e{r['epochs']}"
+        return k + "".join(f"|{f}{_axis_tag(r.get(f))}" for f in extra_key_fields)
+
     groups: dict = {}
     for r in runs:
         groups.setdefault(keyf(r), []).append(r)
@@ -574,6 +691,8 @@ def merge_results(results_dir, out_path):
         entry = {"model": rs[0]["model"], "regime": rs[0]["regime"],
                  "dim": rs[0]["dim"], "epochs": rs[0]["epochs"],
                  "n_seeds": len(rs), "seeds": sorted(x["seed"] for x in rs)}
+        for f in extra_key_fields:
+            entry[f] = rs[0].get(f)
         for m in metrics:
             vals = np.array([x[m] for x in rs if x.get(m) is not None and not np.isnan(x[m])], float)
             if len(vals):
@@ -703,8 +822,26 @@ def main_run_path(results_dir, model, regime_short, seed):
     return Path(results_dir) / f"kge_{model}_{regime_short}_seed{seed}.json"
 
 
-def sweep_run_path(results_dir, model, regime_short, seed, dim, epochs):
-    return Path(results_dir) / "sweep" / f"kge_{model}_{regime_short}_seed{seed}_d{dim}_e{epochs}.json"
+def _axis_tag(v):
+    """Filename-safe tag for one swept axis value; 'def' = the model's own default."""
+    if v is None:
+        return "def"
+    return f"{v:g}" if isinstance(v, float) else str(v)
+
+
+def sweep_run_path(results_dir, model, regime_short, seed, dim, epochs, lr=None, negs=None):
+    """One file per sweep CELL, with EVERY swept axis in the name.
+
+    dim/epochs alone are not enough now that the sweep also varies learning rate and
+    negatives per positive: two cells differing only in lr would otherwise collide and
+    the second would either be silently skipped (resume) or silently overwrite the first,
+    which would corrupt the sweep table in a way that is invisible after the fact.
+    A value of None (use the model's published default) is tagged 'def' rather than
+    omitted, so a default-lr cell and an explicitly-set-lr cell never share a name.
+    """
+    return (Path(results_dir) / "sweep" /
+            f"kge_{model}_{regime_short}_seed{seed}_d{dim}_e{epochs}"
+            f"_lr{_axis_tag(lr)}_neg{_axis_tag(negs)}.json")
 
 
 # --------------------------------------------------------------------------- #
@@ -719,8 +856,14 @@ def train_eval_write(cfg, model_name, rd, dim, epochs, seed, device, args, out_p
         try:
             prev = json.loads(out_path.read_text())
             mism = [f"{k}={prev.get(k)!r}!={want!r}" for k, want in
-                    (("dim", dim), ("epochs", epochs), ("subgraph_frac", rd["subgraph_frac"]))
+                    (("dim", dim), ("epochs", epochs), ("subgraph_frac", rd["subgraph_frac"]),
+                     ("lr", cfg.get("lr")), ("num_negs", cfg.get("num_negs")))
                     if prev.get(k) != want]
+            # A run written before --train-fit-n existed has no train_fit block; it is a
+            # valid run but not the one being asked for now, so say so instead of
+            # reporting the cell as done and leaving the diagnostic silently missing.
+            if args.train_fit_n and not prev.get("train_fit"):
+                mism.append("train_fit=<missing>")
         except Exception:
             mism = []
         if mism:
@@ -748,12 +891,57 @@ def train_eval_write(cfg, model_name, rd, dim, epochs, seed, device, args, out_p
         run = evaluate_regime(scorer, model, tf, rd["train_edges"], rd["short"],
                               rd["test_edges"], rd["hub_set"], rd["hub_filter"], device,
                               args.n_neg, args.rank_seed, args.class_cap, pools=pools, known=known)
+
+    # --- train-fit diagnostic: the SAME scorer + evaluator, on seen edges ------------- #
+    # Deliberately routed through evaluate_regime / evaluate_regime_fullrank rather than a
+    # parallel scoring path, so train and test numbers are produced by byte-identical code
+    # and the only difference between them is which edges are scored. ``known`` is left
+    # None so the evaluator rebuilds the filtered-negative exclusions for the TRAIN heads
+    # (the cached one covers test heads only); ``pools`` is the same training graph and is
+    # reused as-is.
+    if args.train_fit_n:
+        tfit_edges = sample_train_fit_edges(rd["train_edges"], args.train_fit_n,
+                                            args.train_fit_seed)
+        if len(tfit_edges) == 0:
+            log(f"    WARNING no {TARGET_REL} edges in the {rd['short']} training graph; "
+                f"skipping the train-fit diagnostic")
+        else:
+            log(f"    [{rd['short']}] TRAIN-FIT: scoring {len(tfit_edges)} sampled TRAINING "
+                f"edges with the same evaluator ...")
+            tag = f"{rd['short']}-trainfit"
+            if args.full_rank:
+                tfit = evaluate_regime_fullrank(scorer, model, tf, rd["train_edges"], tag,
+                                                tfit_edges, device, args.rank_seed,
+                                                args.class_cap)
+            else:
+                tfit = evaluate_regime(scorer, model, tf, rd["train_edges"], tag, tfit_edges,
+                                       rd["hub_set"], rd["hub_filter"], device, args.n_neg,
+                                       args.rank_seed, args.class_cap, pools=pools, known=None)
+            tfit["n_train_fit_sampled"] = int(len(tfit_edges))
+            tfit["train_fit_seed"] = args.train_fit_seed
+            tfit["edges"] = "sampled TRAINING edges of the target relation (model saw these)"
+            run["train_fit"] = tfit
+            run["train_fit_MRR"] = tfit["MRR"]
+            # test - train: how much of the fit fails to transfer to unseen edges.
+            run["generalization_gap_MRR"] = float(run["MRR"] - tfit["MRR"])
+            log(f"    [{rd['short']}] TRAIN-FIT MRR={tfit['MRR']:.4f} vs TEST MRR="
+                f"{run['MRR']:.4f} (gap {run['generalization_gap_MRR']:+.4f})")
+
     run.update(model=model_name, seed=seed, dim=dim, epochs=epochs,
                train_file=rd["train_file"], test_file=rd["test_file"],
                n_train_edges=int(len(rd["train_edges"])), n_train_full=rd["n_train_full"],
                subgraph_frac=rd["subgraph_frac"], train_seconds=round(secs, 1),
                train_batch=tmeta["batch"], loop=cfg.get("loop", "slcwa"), loss=cfg.get("loss"),
-               num_negs=cfg.get("num_negs"), hparams_ref=cfg.get("ref"))
+               num_negs=cfg.get("num_negs"), hparams_ref=cfg.get("ref"),
+               optimizer=cfg.get("optimizer", "adam"), lr=cfg.get("lr"),
+               regularizer=(None if cfg.get("regularizer") is None
+                            else str(cfg.get("regularizer"))),
+               regularizer_kwargs=cfg.get("regularizer_kwargs"),
+               loss_kwargs=cfg.get("loss_kwargs"),
+               # Full per-epoch mean training loss. Lets the R0 and R2 trajectories be
+               # plotted side by side, which is how "the optimizer behaved the same way on
+               # both graphs" is shown rather than asserted.
+               epoch_losses=tmeta.get("epoch_losses"))
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(json.dumps(run, indent=2))
     log(f"    {model_name}/{rd['short']} d{dim} e{epochs}: MRR={run['MRR']:.4f} "
@@ -781,9 +969,32 @@ def main():
     ap.add_argument("--dim", type=int, default=64, help="embedding dim for the headline runs")
     ap.add_argument("--epochs", type=int, default=300, help="epochs for the headline runs")
     ap.add_argument("--sweep", action="store_true",
-                    help="ALSO run the R0 sensitivity sweep over --sweep-dims x --sweep-epochs")
+                    help="ALSO run the sensitivity sweep (full cross of --sweep-dims x "
+                         "--sweep-epochs x --sweep-lrs x --sweep-negs) on --sweep-regimes")
+    ap.add_argument("--sweep-only", action="store_true",
+                    help="run ONLY the sweep cells, not the headline --dim/--epochs cell "
+                         "(use when the headline runs already exist and must not be redone)")
     ap.add_argument("--sweep-dims", nargs="+", type=int, default=[64, 128])
     ap.add_argument("--sweep-epochs", nargs="+", type=int, default=[100, 300])
+    ap.add_argument("--sweep-lrs", nargs="+", type=float, default=None,
+                    help="learning-rate axis of the sweep (default: one cell at the "
+                         "model's default lr). Set PER CELL, unlike --lr which fixes one "
+                         "rate for every model in the run.")
+    ap.add_argument("--sweep-negs", nargs="+", type=int, default=None,
+                    help="negatives-per-positive axis of the sweep (default: one cell at "
+                         "the model's published num_negs)")
+    ap.add_argument("--sweep-regimes", nargs="+", default=["R0"],
+                    help="regimes to sweep. A sweep on ONE regime cannot show a "
+                         "cross-regime gap is config-independent, so a claim of the form "
+                         "'the collapse survives retuning' needs the SAME grid on both "
+                         "the collapsed regime and its reference (e.g. --sweep-regimes R0 R2).")
+    ap.add_argument("--train-fit-n", type=int, default=0,
+                    help="ALSO evaluate this many sampled TRAINING edges of the target "
+                         "relation (0 = off). Train fit bounds what the optimizer achieved: "
+                         "a regime that fits its own training edges but not held-out ones "
+                         "failed to GENERALIZE, it did not fail to optimize.")
+    ap.add_argument("--train-fit-seed", type=int, default=42,
+                    help="seed for sampling the train-fit edges (fixed across regimes)")
     ap.add_argument("--subgraph-frac", type=float, default=None,
                     help="train on a ~FRAC filtered subgraph for speed, e.g. 0.11 "
                          "(Gu et al. 2024); keeps all target + test-incident edges")
@@ -815,6 +1026,20 @@ def main():
     ap.add_argument("--distmult-loop", default=None, choices=["slcwa", "lcwa"],
                     help="override DistMult training loop; 'lcwa' = canonical 1-vs-all bilinear "
                          "(Lacroix+2018; defaults its loss to crossentropy unless --distmult-loss is given)")
+    ap.add_argument("--lr", type=float, default=None,
+                    help="optimizer learning rate for EVERY model in --models "
+                         "(default: PyKEEN/torch default, Adam lr=1e-3). The bilinear "
+                         "models need a larger step than the translational ones.")
+    ap.add_argument("--optimizer", default=None,
+                    help="optimizer for every model in --models: adam|adagrad|sgd "
+                         "(default adam; adagrad is the canonical bilinear choice)")
+    ap.add_argument("--regularizer", default=None,
+                    help="regularizer for every model in --models, e.g. 'lp' (N3 via "
+                         "--reg-p 3) or 'none' to disable the model's default")
+    ap.add_argument("--reg-weight", type=float, default=None,
+                    help="regularizer weight (used with --regularizer lp)")
+    ap.add_argument("--reg-p", type=float, default=None,
+                    help="regularizer norm p (3.0 = N3, Lacroix+2018)")
     ap.add_argument("--lcwa-slice-size", type=int, default=20000,
                     help="chunk the all-entity target dim for LCWA so it fits GPU memory")
     ap.add_argument("--progress-secs", type=float, default=1.0,
@@ -850,7 +1075,8 @@ def main():
     if args.merge_only:
         payload = merge_results(args.results_dir, summary_path)
         if (Path(args.results_dir) / "sweep").exists():
-            merge_results(Path(args.results_dir) / "sweep", sweep_summary_path)
+            merge_results(Path(args.results_dir) / "sweep", sweep_summary_path,
+                          extra_key_fields=("lr", "num_negs"))
         print_r0_vs_r3(payload)
         return
 
@@ -931,51 +1157,103 @@ def main():
             f"negs={cfgs['DistMult'].get('num_negs')} loss={cfgs['DistMult'].get('loss')} "
             f"loss_kwargs={cfgs['DistMult'].get('loss_kwargs')}")
 
+    # Optimizer / regularizer overrides. These apply to every model in --models (the
+    # bilinear rescue runs are launched with --models DistMult or ComplEx alone, so the
+    # frozen TransE/RotatE recipes are never touched). Defaults are None -> PyKEEN
+    # defaults -> byte-identical behaviour to the runs already on disk.
+    for _m in args.models:
+        if args.optimizer is not None:
+            cfgs[_m]["optimizer"] = args.optimizer
+        if args.lr is not None:
+            cfgs[_m]["lr"] = args.lr
+        if args.regularizer is not None:
+            if args.regularizer.lower() == "none":
+                cfgs[_m]["regularizer"] = None
+                cfgs[_m]["regularizer_kwargs"] = None
+            else:
+                cfgs[_m]["regularizer"] = args.regularizer
+                rkw = {}
+                if args.reg_weight is not None:
+                    rkw["weight"] = args.reg_weight
+                if args.reg_p is not None:
+                    rkw["p"] = args.reg_p
+                cfgs[_m]["regularizer_kwargs"] = rkw
+        if any(v is not None for v in (args.optimizer, args.lr, args.regularizer)):
+            log(f"{_m} optimizer override: optimizer={cfgs[_m].get('optimizer', 'adam')} "
+                f"lr={cfgs[_m].get('lr')} regularizer={cfgs[_m].get('regularizer')} "
+                f"regularizer_kwargs={cfgs[_m].get('regularizer_kwargs')}")
+
     # Flatten every (regime, seed, dim, epochs, kind, model) cell into ONE ordered plan
     # so the log shows whole-battery progress + a running ETA, on top of the per-epoch bar.
+    # A sweep cell's lr / num_negs are PER-CELL overrides layered on top of the model's
+    # config at dispatch time. They cannot go through --lr / --optimizer, which set one
+    # value for every model for the whole run.
+    sweep_regimes = {r.split("_", 1)[0].upper() for r in args.sweep_regimes}
+    sweep_lrs = args.sweep_lrs if args.sweep_lrs else [None]
+    sweep_negs = args.sweep_negs if args.sweep_negs else [None]
+    do_sweep = args.sweep or args.sweep_only
+
     plan = []
     for rd in regimes:
-        jobs = [(args.dim, args.epochs, "main")]
-        if args.sweep and rd["short"] == "R0":
-            jobs += [(d, e, "sweep") for d in args.sweep_dims for e in args.sweep_epochs]
+        jobs = [] if args.sweep_only else [(args.dim, args.epochs, "main", None, None)]
+        if do_sweep and rd["short"].upper() in sweep_regimes:
+            jobs += [(d, e, "sweep", lr, ng)
+                     for d in args.sweep_dims for e in args.sweep_epochs
+                     for lr in sweep_lrs for ng in sweep_negs]
         for seed in args.seeds:
-            for dim, epochs, kind in jobs:
+            for dim, epochs, kind, lr, ng in jobs:
                 for model_name in args.models:
-                    plan.append((rd, seed, dim, epochs, kind, model_name))
+                    plan.append((rd, seed, dim, epochs, kind, model_name, lr, ng))
+    if do_sweep:
+        missing = sweep_regimes - {rd["short"].upper() for rd in regimes}
+        if missing:
+            log(f"WARNING --sweep-regimes names {sorted(missing)} which are not in "
+                f"--regimes (or whose training file is missing): NOT swept.")
 
     poolcache: dict = {}      # regime -> (pools, known); depend only on train/test edges
     durations: list = []      # wall-seconds of cells we actually trained (feeds the ETA)
     grid_t0 = time.time()
     n = len(plan)
-    for idx, (rd, seed, dim, epochs, kind, model_name) in enumerate(plan, 1):
+    for idx, (rd, seed, dim, epochs, kind, model_name, lr, ng) in enumerate(plan, 1):
         if rd["short"] not in poolcache:
             poolcache[rd["short"]] = (
                 le._category_pools(rd["train_edges"], rd["hub_set"]),
                 le._known_tails_by_head(rd["train_edges"], rd["test_edges"], rd["test_edges"][:, 0]),
             )
         pools, known = poolcache[rd["short"]]
+        cfg = dict(cfgs[model_name])
+        if lr is not None:
+            cfg["lr"] = lr
+        if ng is not None:
+            cfg["num_negs"] = ng
         outp = (main_run_path(args.results_dir, model_name, rd["short"], seed) if kind == "main"
-                else sweep_run_path(args.results_dir, model_name, rd["short"], seed, dim, epochs))
+                else sweep_run_path(args.results_dir, model_name, rd["short"], seed, dim,
+                                    epochs, cfg.get("lr"), cfg.get("num_negs")))
 
         elapsed = time.time() - grid_t0
         eta_h = (float(np.mean(durations)) * (n - idx + 1) / 3600.0) if durations else float("nan")
         bar_n = 28
         filled = int(round(bar_n * (idx - 1) / n))
         log(f"[grid {idx:>2}/{n}] [{'#' * filled + '-' * (bar_n - filled)}] "
-            f"{model_name} {rd['short']} seed{seed} d{dim} e{epochs} ({kind}) | "
+            f"{model_name} {rd['short']} seed{seed} d{dim} e{epochs} "
+            f"lr={_axis_tag(cfg.get('lr'))} neg={_axis_tag(cfg.get('num_negs'))} ({kind}) | "
             f"elapsed {elapsed/3600:.2f}h | trained {len(durations)} | "
             + (f"eta ~{eta_h:.1f}h" if durations else "eta (measuring)"))
 
         t0 = time.time()
-        trained = train_eval_write(cfgs[model_name], model_name, rd, dim, epochs, seed,
+        trained = train_eval_write(cfg, model_name, rd, dim, epochs, seed,
                                    device, args, outp, pools, known, TriplesFactory, torch)
         if trained:
             durations.append(time.time() - t0)
 
-    payload = merge_results(args.results_dir, summary_path)
+    payload = None
+    if not args.sweep_only:
+        payload = merge_results(args.results_dir, summary_path)
     if (Path(args.results_dir) / "sweep").exists():
-        merge_results(Path(args.results_dir) / "sweep", sweep_summary_path)
-    print_r0_vs_r3(payload)
+        merge_results(Path(args.results_dir) / "sweep", sweep_summary_path,
+                      extra_key_fields=("lr", "num_negs"))
+    if payload is not None:
+        print_r0_vs_r3(payload)
 
 
 if __name__ == "__main__":

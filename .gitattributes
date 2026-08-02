@@ -1,0 +1,18 @@
+# Normalize line endings so three machines (incl. Windows) don't churn CRLF/LF
+# on every save and create phantom "whole-file changed" diffs.
+* text=auto
+
+# Manuscript sources: force LF and treat as text -> clean line-by-line diffs and
+# painless merges when two people touch the same file.
+*.tex   text eol=lf
+*.bib   text eol=lf
+*.md    text eol=lf
+*.cls   text eol=lf
+*.sty   text eol=lf
+
+# Binaries: never normalize, never attempt a line merge.
+*.pdf   binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.eps   binary

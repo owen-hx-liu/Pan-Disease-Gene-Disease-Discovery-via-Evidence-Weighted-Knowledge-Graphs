@@ -33,10 +33,23 @@ them needs a one-line per-edge dump in run_baselines.py + a fast re-run, done se
 Output: ``data/processed/results/degree_stratified/degree_stratified.json`` -- consumed by
 make_tables.py (Table 5) and make_figures.py (Fig 4). No number is hand-typed downstream.
 
+Reusing this on another method arm
+----------------------------------
+The stratification only needs per-edge reciprocal ranks in test.csv row order, so any arm
+that writes the harness's run-JSON schema can be re-analysed with NO retraining. The
+optional flags below point the loader at a different results directory / model list; every
+default reproduces the frozen production behaviour byte-for-byte, so plain
+``python scripts/degree_stratified.py`` is unchanged. The message-passing arm uses:
+
+    python scripts/degree_stratified.py --kge-dir data/processed/results/gnn \\
+        --models RGCN --regimes R0 R2 --no-baselines \\
+        --out data/processed/results/gnn/degree_stratified.json
+
 Usage:  python scripts/degree_stratified.py
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import os
@@ -49,13 +62,23 @@ REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 RESULTS = os.path.join(REPO_ROOT, "data", "processed", "results")
 SPLITS = os.path.join(REPO_ROOT, "data", "processed", "splits")
 OUT_DIR = os.path.join(RESULTS, "degree_stratified")
+# Where the per-run JSONs live, and where the report goes. Overridable via --kge-dir /
+# --out; the defaults are the frozen production locations.
+KGE_DIR = os.path.join(RESULTS, "kge")
+OUT_PATH = os.path.join(OUT_DIR, "degree_stratified.json")
+WITH_BASELINES = True
 
 # Canonical presentation order (topological baselines first, then KGE), so the emitted
 # tables/figures group methods by class.
 BASELINES = ["Random", "CommonNeighbors", "AdamicAdar", "Jaccard", "PreferentialAttachment"]
 KGE_MODELS = ["TransE", "RotatE"]
 METHOD_ORDER = BASELINES + KGE_MODELS
-METHOD_CLASS = {**{m: "baseline" for m in BASELINES}, **{m: "kge" for m in KGE_MODELS}}
+# Class every KGE the repo trains, not just the two the frozen Table 5 stratifies. A model
+# absent here falls through to parse_args' "message_passing" default, which would mislabel a
+# matched KGE reference control passed via --models as message passing -- inverting the one
+# contrast the GNN arm exists to make. Extra keys are inert: only `covered` models are emitted.
+ALL_KGE_MODELS = KGE_MODELS + ["DistMult", "ComplEx"]
+METHOD_CLASS = {**{m: "baseline" for m in BASELINES}, **{m: "kge" for m in ALL_KGE_MODELS}}
 REGIMES = ["R0", "R1", "R2", "R3"]
 SEEDS = [42, 1, 7]
 N_QUANTILES = 4  # quartile gradient Q1 (low degree) .. Q4 (high degree)
@@ -100,7 +123,7 @@ def load_reciprocal_ranks(model: str, regime: str) -> np.ndarray | None:
     """(n_seeds, n_test) matrix of per-edge reciprocal ranks; None if any seed is missing."""
     arrs = []
     for seed in SEEDS:
-        path = os.path.join(RESULTS, "kge", f"kge_{model}_{regime}_seed{seed}.json")
+        path = os.path.join(KGE_DIR, f"kge_{model}_{regime}_seed{seed}.json")
         if not os.path.exists(path):
             return None
         with open(path, encoding="utf-8") as fh:
@@ -209,7 +232,37 @@ def stratify_axis(axis_name: str, node_degree: np.ndarray, cells: dict) -> dict:
     return block
 
 
+def parse_args() -> None:
+    """Optional overrides for re-analysing a different method arm. Every default equals the
+    frozen production configuration, so calling the script with no arguments is unchanged."""
+    global KGE_DIR, OUT_PATH, KGE_MODELS, REGIMES, SEEDS, METHOD_ORDER, METHOD_CLASS
+    global WITH_BASELINES
+    ap = argparse.ArgumentParser(description="Degree-stratified re-analysis of stored "
+                                             "per-edge ranks (no retraining).")
+    ap.add_argument("--kge-dir", default=KGE_DIR,
+                    help="directory holding kge_<model>_<regime>_seed<k>.json run files")
+    ap.add_argument("--models", nargs="+", default=KGE_MODELS,
+                    help="models to stratify (must store per-edge reciprocal_ranks)")
+    ap.add_argument("--regimes", nargs="+", default=REGIMES)
+    ap.add_argument("--seeds", nargs="+", type=int, default=SEEDS)
+    ap.add_argument("--out", default=OUT_PATH, help="output JSON path")
+    ap.add_argument("--no-baselines", action="store_true",
+                    help="skip the topological-baseline per-edge dumps (they belong to the "
+                         "full-graph arm and are not matched to a subgraph run)")
+    a = ap.parse_args()
+    KGE_DIR, OUT_PATH, KGE_MODELS = a.kge_dir, a.out, list(a.models)
+    REGIMES, SEEDS = list(a.regimes), list(a.seeds)
+    WITH_BASELINES = not a.no_baselines
+    # A model this script has never heard of is a non-baseline method arm; class it as
+    # message passing (the reason these flags exist) rather than crashing on a KeyError.
+    for m in KGE_MODELS:
+        METHOD_CLASS.setdefault(m, "message_passing")
+        if m not in METHOD_ORDER:
+            METHOD_ORDER.append(m)
+
+
 def main() -> None:
+    parse_args()
     print("Degree-stratified re-analysis (no retraining; reads frozen per-edge ranks)...")
     genes, diseases = load_test_edges()
     degrees = load_degrees()
@@ -232,7 +285,7 @@ def main() -> None:
                 continue
             cells[f"{model}|{regime}"] = rr
             present.add(model)
-    for regime in REGIMES:
+    for regime in (REGIMES if WITH_BASELINES else []):
         bl = load_baseline_reciprocal_ranks(regime)
         if not bl:
             print(f"  note {regime}: no per-edge baseline ranks (run_baselines.py not re-run?)")
@@ -262,14 +315,14 @@ def main() -> None:
             "seeds": SEEDS,
             "methods_covered": covered,
             "method_class": {m: METHOD_CLASS[m] for m in covered},
-            "models_covered": [m for m in covered if METHOD_CLASS[m] == "kge"],
+            "models_covered": [m for m in covered if METHOD_CLASS[m] != "baseline"],
         },
         "by_gene_degree": stratify_axis("gene (query)", gene_deg, cells),
         "by_disease_degree": stratify_axis("disease (ranked target)", dis_deg, cells),
     }
 
-    os.makedirs(OUT_DIR, exist_ok=True)
-    dest = os.path.join(OUT_DIR, "degree_stratified.json")
+    dest = OUT_PATH
+    os.makedirs(os.path.dirname(dest) or ".", exist_ok=True)
     with open(dest, "w", encoding="utf-8") as fh:
         json.dump(out, fh, indent=2)
     print(f"  wrote {os.path.relpath(dest, REPO_ROOT)}")

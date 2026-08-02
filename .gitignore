@@ -31,7 +31,11 @@ __pycache__/
 .ipynb_checkpoints/
 
 # ---- editor / OS ----
-.vscode/
+# Ignore .vscode/ EXCEPT the two files we share with collaborators so everyone
+# gets the same LaTeX build recipe + recommended extensions on clone.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
 .idea/
 .DS_Store
 Thumbs.db
@@ -59,3 +63,23 @@ fullgraph_*.png
 
 # ---- external third-party graphs (Hetionet etc.); consumed from the data channel, never committed ----
 data/external/
+
+# ---- LaTeX build artifacts (compile locally; regenerate every build) ----
+# Committing these is the #1 cause of merge conflicts in a shared paper repo.
+manuscript/latex/*.aux
+manuscript/latex/*.bbl
+manuscript/latex/*.blg
+manuscript/latex/*.log
+manuscript/latex/*.out
+manuscript/latex/*.toc
+manuscript/latex/*.lof
+manuscript/latex/*.lot
+manuscript/latex/*.fls
+manuscript/latex/*.fdb_latexmk
+manuscript/latex/*.synctex.gz
+manuscript/latex/*.run.xml
+manuscript/latex/*.bcf
+manuscript/latex/build/
+# The compiled PDF is a binary that conflicts constantly; everyone builds it
+# locally. Delete this line if you'd rather commit main.pdf for easy viewing.
+manuscript/latex/main.pdf
