@@ -13,12 +13,9 @@ authors:
   - family-names: "Tang"
     given-names: "Ryan"
     affiliation: "Independent Researcher"
-  - family-names: "Augustine"
-    given-names: "Daniel"
-    affiliation: "Independent Researcher"
-version: v1.1.0
-doi: "10.5281/zenodo.21398832"
-date-released: "2026-07-17"
+version: v1.2.0
+doi: "10.5281/zenodo.21398831"
+date-released: "2026-08-03"
 license:
   - MIT
   - CC-BY-4.0
@@ -36,16 +33,19 @@ keywords:
   - Monarch Initiative
   - TransE
   - RotatE
+  - DistMult
+  - ComplEx
 abstract: >-
   Code, de-leaked evaluation splits, and benchmark results for a graded leakage audit of
   gene-disease link prediction on a multi-species, Monarch-derived knowledge graph
-  (452,012 nodes; 5,860,539 directed edges). Two knowledge-graph-embedding models
-  (TransE, RotatE) and five topological baselines (Random, Common-Neighbors,
-  Adamic-Adar, Jaccard, Preferential-Attachment) are evaluated under one shared ranking
-  harness on 4,228 held-out human gene-disease test edges across four leakage regimes
-  (R0 standard, R1 redundancy, R2 degree-preserving null, R3 orthology-blocked; seeds
-  42/1/7). Evaluation leakage is method-class-dependent: node-degree structure (R2) is
-  the one universal leak, train/test redundancy (R1) leaks only into multi-hop KGE, and
+  (452,012 nodes; 5,860,539 directed edges). Four knowledge-graph-embedding models
+  spanning two families (translational: TransE, RotatE; bilinear: DistMult, ComplEx)
+  and five topological baselines (Random, Common-Neighbors, Adamic-Adar, Jaccard,
+  Preferential-Attachment) are evaluated under one shared ranking harness on 4,228
+  held-out human gene-disease test edges across four leakage regimes (R0 standard, R1
+  redundancy, R2 degree-preserving null, R3 orthology-blocked; seeds 42/1/7).
+  Evaluation leakage is method-class-dependent: node-degree structure (R2) is the one
+  universal leak, train/test redundancy (R1) leaks only into multi-hop KGE, and
   cross-species orthology (R3) is a designed negative control that comes back null. The
   release includes the de-leaked splits, per-regime result JSONs (including a filtered
   full-ranking robustness run), table/figure generators that read only the frozen

@@ -83,3 +83,16 @@ manuscript/latex/build/
 # The compiled PDF is a binary that conflicts constantly; everyone builds it
 # locally. Delete this line if you'd rather commit main.pdf for easy viewing.
 manuscript/latex/main.pdf
+
+# ---- manuscript / paper drafts and working notes ----
+# The paper itself (drafts, LaTeX source, checklists, cover letter, submission
+# figures) is not part of the code+data release and does not belong in this
+# repo; it lives wherever the manuscript is actually authored (Overleaf/local).
+# Root-level loose .tex/.md notes (e.g. PLOS_manuscript_revised.tex,
+# FINDINGS_*.md) are excluded the same way; README.md is explicitly kept, and
+# tables/*.md and tables/*.tex (generated benchmark outputs) are untouched
+# since they live outside this root-only pattern.
+manuscript/
+/*.tex
+/*.md
+!/README.md
