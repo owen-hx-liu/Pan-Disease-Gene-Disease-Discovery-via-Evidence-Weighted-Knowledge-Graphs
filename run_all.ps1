@@ -127,17 +127,17 @@ try {
     # -------------------------------------------------------------------- 6. KGE
     if ($SkipKge) {
         $script:Step++
-        Banner "STEP $($script:Step): KGE (TransE + RotatE)  --  SKIPPED (-SkipKge)"
+        Banner "STEP $($script:Step): KGE (TransE, RotatE, DistMult, ComplEx)  --  SKIPPED (-SkipKge)"
         Write-Host "  Reusing the committed data/processed/results/kge/kge_summary.json."
-        Write-Host "  To (re)compute on a CUDA GPU (~40 min/cell, 24 cells -> many hours):"
-        Write-Host "    $Python scripts/run_kge.py --models TransE RotatE --regimes R0 R1 R2 R3 ``"
-        Write-Host "        --seeds 42 1 7 --dim 64 --epochs 300"
+        Write-Host "  To (re)compute on a CUDA GPU (~40 min/cell, 48 cells -> many hours):"
+        Write-Host "    $Python scripts/run_kge.py --models TransE RotatE DistMult ComplEx ``"
+        Write-Host "        --regimes R0 R1 R2 R3 --seeds 42 1 7 --dim 64 --epochs 300"
     } else {
-        Invoke-Step -Title "KGE full benchmark: TransE + RotatE x R0,R1,R2,R3 x 3 seeds" `
-            -Est "GPU REQUIRED; ~40 min/cell, 24 cells -> many hours" `
+        Invoke-Step -Title "KGE full benchmark: TransE, RotatE, DistMult, ComplEx x R0,R1,R2,R3 x 3 seeds" `
+            -Est "GPU REQUIRED; ~40 min/cell, 48 cells -> many hours" `
             -Out "data/processed/results/kge/*.json + kge_summary.json" `
             -PyArgs @("scripts/run_kge.py",
-                      "--models", "TransE", "RotatE",
+                      "--models", "TransE", "RotatE", "DistMult", "ComplEx",
                       "--regimes", "R0", "R1", "R2", "R3",
                       "--seeds", "42", "1", "7", "--dim", "64", "--epochs", "300")
     }

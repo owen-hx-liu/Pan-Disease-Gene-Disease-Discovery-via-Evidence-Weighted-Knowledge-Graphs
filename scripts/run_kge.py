@@ -2,21 +2,31 @@
 """
 run_kge.py -- Machine A (GPU) KGE arm of the leakage-aware benchmark.
 
-Two KGE models -- TransE and ComplEx -- are scored by the EXACT SAME harness as
-the topological baselines (scripts/lib_eval.py), on the SAME frozen splits
-(data/processed/splits/). That is the whole point: if KGE used PyKEEN's internal
-all-entity evaluator while the baselines used lib_eval's sampled protocol, the two
-columns of the paper's Table 2 would not be comparable.
+Four KGE models -- TransE, RotatE, DistMult, ComplEx -- spanning two scoring
+families (translational: TransE, RotatE; bilinear: DistMult, ComplEx) are scored by
+the EXACT SAME harness as the topological baselines (scripts/lib_eval.py), on the
+SAME frozen splits (data/processed/splits/). That is the whole point: if KGE used
+PyKEEN's internal all-entity evaluator while the baselines used lib_eval's sampled
+protocol, the columns of the paper's Table 2 would not be comparable.
 
-Scope (this rewrite):
-  (a) Models: ONLY TransE and ComplEx. DistMult and RotatE are dropped -- two
-      well-understood, well-cited models (one translational, one bilinear) are
-      enough to answer the leakage question and keep the GPU budget sane.
-  (b) Regimes: R0 (train.csv), R2 (train_R2_degree_null_seed42.csv), R3
-      (train_R3_orthology_blocked.csv). Each has its OWN training graph, so each
-      model is trained per regime. R1 is skipped (hub filter is a no-op for
-      embeddings; R1==R0 for KGE). Regimes whose training file is not built yet
-      (R2 until Unit 7 runs) are skipped with a warning, exactly like run_baselines.py.
+Scope (current):
+  (a) Models: TransE, RotatE, DistMult, ComplEx -- one translational/bilinear pair
+      each, chosen to be well-understood and well-cited while keeping the GPU budget
+      sane. DistMult and ComplEx initially appeared untrainable at this scale
+      (training loss pinned, MRR at random); the cause was PyKEEN's default per-model
+      L2 regularizer driving the relation embedding to zero, not a property of the
+      models -- see S1 Text in the manuscript. Both train normally with the
+      regularizer disabled, and ComplEx additionally requires the softplus loss.
+  (b) Regimes: R0 (train.csv), R1 (train_R1_redundancy.csv), R2
+      (train_R2_degree_null_seed42.csv), R3 (train_R3_orthology_blocked.csv). Each
+      has its OWN training graph, so each model is trained per regime. R1 was
+      originally assumed to be a no-op for embeddings (a direct held-pair edge is not
+      a shared neighbour, so the hub filter that defines R1 for the topological
+      baselines does nothing to KGE) -- that assumption was wrong: R1 leaks into
+      every KGE model here (6-13% MRR), because a direct gene-disease edge is
+      embedded as learned proximity even though it is not a shared neighbour. R1 is
+      therefore run like every other regime. Regimes whose training file is not built
+      yet are skipped with a warning, exactly like run_baselines.py.
   (c) Ranking goes through lib_eval.rank_test_edges with
       score_fn(gene, disease) = model score of (gene, GENE_ASSOCIATED_WITH_CONDITION,
       disease) -- i.e. score_hrt for the fixed target relation, with IDs mapped

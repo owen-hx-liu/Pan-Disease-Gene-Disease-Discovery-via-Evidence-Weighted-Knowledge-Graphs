@@ -3,7 +3,7 @@
 # it if .zenodo.json is absent. .zenodo.json is authoritative for the Zenodo deposit.
 cff-version: 1.2.0
 message: "If you use this software or the de-leaked benchmark, please cite it as below."
-title: "Quantifying evaluation leakage in multi-species gene-disease link prediction: a graded audit and de-leaked benchmark"
+title: "Quantifying evaluation leakage in multi-species gene-disease link prediction: a graded audit and a de-leaked benchmark"
 type: software
 authors:
   - family-names: "Liu"
@@ -13,9 +13,10 @@ authors:
   - family-names: "Tang"
     given-names: "Ryan"
     affiliation: "Independent Researcher"
-version: v1.2.0
+    orcid: "https://orcid.org/0009-0006-8336-3502"
+version: v1.4.0
 doi: "10.5281/zenodo.21398831"
-date-released: "2026-08-03"
+date-released: "2026-08-06"
 license:
   - MIT
   - CC-BY-4.0
@@ -44,8 +45,8 @@ abstract: >-
   Preferential-Attachment) are evaluated under one shared ranking harness on 4,228
   held-out human gene-disease test edges across four leakage regimes (R0 standard, R1
   redundancy, R2 degree-preserving null, R3 orthology-blocked; seeds 42/1/7).
-  Evaluation leakage is method-class-dependent: node-degree structure (R2) is the one
-  universal leak, train/test redundancy (R1) leaks only into multi-hop KGE, and
+  Evaluation leakage is method-class-dependent: node-degree structure (R2) is the leak
+  every method tested shares, train/test redundancy (R1) leaks only into multi-hop KGE, and
   cross-species orthology (R3) is a designed negative control that comes back null. The
   release includes the de-leaked splits, per-regime result JSONs (including a filtered
   full-ranking robustness run), table/figure generators that read only the frozen

@@ -121,16 +121,16 @@ run_py "Topological baselines across regimes R0,R1,R2,R3 (seeds 42,1,7)" "~3-8 m
 # --------------------------------------------------------------------- 6. KGE
 if [ "$SKIP_KGE" -eq 1 ]; then
   STEP=$((STEP + 1))
-  banner "STEP ${STEP}: KGE (TransE + RotatE)  --  SKIPPED (--skip-kge)"
+  banner "STEP ${STEP}: KGE (TransE, RotatE, DistMult, ComplEx)  --  SKIPPED (--skip-kge)"
   echo "  Reusing the committed data/processed/results/kge/kge_summary.json."
-  echo "  To (re)compute on a CUDA GPU (~40 min/cell, 24 cells -> many hours):"
-  echo "    $PYTHON scripts/run_kge.py --models TransE RotatE --regimes R0 R1 R2 R3 \\"
-  echo "        --seeds 42 1 7 --dim 64 --epochs 300"
+  echo "  To (re)compute on a CUDA GPU (~40 min/cell, 48 cells -> many hours):"
+  echo "    $PYTHON scripts/run_kge.py --models TransE RotatE DistMult ComplEx \\"
+  echo "        --regimes R0 R1 R2 R3 --seeds 42 1 7 --dim 64 --epochs 300"
 else
-  run_py "KGE full benchmark: TransE + RotatE x R0,R1,R2,R3 x 3 seeds" \
-    "GPU REQUIRED; ~40 min/cell, 24 cells -> many hours" \
+  run_py "KGE full benchmark: TransE, RotatE, DistMult, ComplEx x R0,R1,R2,R3 x 3 seeds" \
+    "GPU REQUIRED; ~40 min/cell, 48 cells -> many hours" \
     "data/processed/results/kge/*.json + kge_summary.json" \
-    "$PYTHON" scripts/run_kge.py --models TransE RotatE --regimes R0 R1 R2 R3 \
+    "$PYTHON" scripts/run_kge.py --models TransE RotatE DistMult ComplEx --regimes R0 R1 R2 R3 \
         --seeds 42 1 7 --dim 64 --epochs 300
 fi
 
