@@ -6,7 +6,7 @@ de-leaked evaluation splits, the benchmark results, and the scripts that regener
 table and figure from the frozen result files.
 
 > **Scope note.** This is a leakage-aware benchmark, not a database-integration resource.
-> The knowledge graph is about 98.5% Monarch Initiative content (Monarch is itself an
+> The knowledge graph is about 98.3% Monarch Initiative content (Monarch is itself an
 > aggregator) augmented with seven curated non-Monarch sources. It is described honestly as
 > a Monarch-derived graph, not an equal integration of many independent databases.
 
@@ -17,9 +17,10 @@ and are usually reported with high ranking and AUROC scores. Those scores can be
 evaluation leakage. This project measures how much, and from which sources, using a graded
 set of controlled evaluation regimes run through one shared ranking harness.
 
-Two KGE models (TransE, RotatE) and five topological baselines (Random, Common-Neighbors,
-Adamic-Adar, Jaccard, Preferential-Attachment) are evaluated on 4,228 held-out human
-gene-disease test edges across four regimes, with three seeds (42, 1, 7):
+Four KGE models spanning two families (translational: TransE, RotatE; bilinear: DistMult,
+ComplEx) and five topological baselines (Random, Common-Neighbors, Adamic-Adar, Jaccard,
+Preferential-Attachment) are evaluated on 4,228 held-out human gene-disease test edges
+across four regimes, with three seeds (42, 1, 7):
 
 | Regime | Name | What it removes |
 |---|---|---|
@@ -86,7 +87,7 @@ scripts/                     pipeline and analysis code
   build_deleaked_splits.py   build the R0/R1/R3 splits and the split manifest
   build_degree_null.py       build the R2 degree-preserving null
   run_baselines.py           topological baselines across regimes
-  run_kge.py                 TransE + RotatE (GPU); --full-rank for the robustness run
+  run_kge.py                 TransE, RotatE, DistMult, ComplEx (GPU); --full-rank for the robustness run
   run_robustness.py          baseline full-ranking robustness
   hetionet_audit.py          cross-graph replication on Hetionet
   degree_stratified.py       degree-stratified re-analysis (gene vs disease degree; no retraining)
@@ -132,7 +133,7 @@ result JSONs let you rebuild every table and figure without retraining.
 
 ## Data, provenance, and licensing
 
-The knowledge graph is derived from the Monarch Initiative (about 98.5% of edges; CC BY 4.0)
+The knowledge graph is derived from the Monarch Initiative (about 98.3% of edges; CC BY 4.0)
 augmented with seven curated sources: DGIdb, GWAS Catalog, DrugCentral, Orphadata,
 Gene2Phenotype, CIViC, and DIDA. Per-source contributions are in
 `data/processed/provenance/`. Because Monarch aggregates several primary sources, do not read
@@ -148,7 +149,7 @@ Two licenses apply:
 ## Citation
 
 If you use this benchmark or code, please cite the archived release:
-[10.5281/zenodo.21398831](https://doi.org/10.5281/zenodo.21398831). Machine-readable metadata
+[10.5281/zenodo.21828504](https://doi.org/10.5281/zenodo.21828504). Machine-readable metadata
 is in [`CITATION.cff`](CITATION.cff) and [`.zenodo.json`](.zenodo.json).
 
 ## Caveats
@@ -156,7 +157,7 @@ is in [`CITATION.cff`](CITATION.cff) and [`.zenodo.json`](.zenodo.json).
 - **No real temporal split.** The graph carries no genuine edge-discovery dates, so the
   benchmark controls optimism with the leakage regimes R0 to R3 on a random held-out split,
   not a time split.
-- **Coverage is Monarch-dominated.** Even after integrating seven more sources, about 98.5%
+- **Coverage is Monarch-dominated.** Even after integrating seven more sources, about 98.3%
   of edges are Monarch content.
 - **Name the protocol.** Ranking metrics are reported for both a sampled-negative protocol
   (Table 2) and a filtered full-ranking protocol (Table S1); the two can rank methods
