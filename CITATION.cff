@@ -14,8 +14,8 @@ authors:
     given-names: "Ryan"
     affiliation: "Independent Researcher"
     orcid: "https://orcid.org/0009-0006-8336-3502"
-version: v1.4.0
-doi: "10.5281/zenodo.21828504"
+version: v1.4.1
+doi: "10.5281/zenodo.21828739"
 date-released: "2026-08-06"
 license:
   - MIT

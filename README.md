@@ -149,7 +149,7 @@ Two licenses apply:
 ## Citation
 
 If you use this benchmark or code, please cite the archived release:
-[10.5281/zenodo.21828504](https://doi.org/10.5281/zenodo.21828504). Machine-readable metadata
+[10.5281/zenodo.21828739](https://doi.org/10.5281/zenodo.21828739). Machine-readable metadata
 is in [`CITATION.cff`](CITATION.cff) and [`.zenodo.json`](.zenodo.json).
 
 ## Caveats
