@@ -96,3 +96,17 @@ manuscript/
 /*.tex
 /*.md
 !/README.md
+# Same rule for the compiled manuscript, cover letter, and LaTeX build output at
+# the repo root. figures/*.pdf are generated release artifacts and are NOT root
+# level, so they are unaffected.
+/*.pdf
+/*.log
+/*.out
+/*.aux
+/plan_audit/
+
+# ---- Zenodo distribution bundles: too large / redundant for git ----
+# splits.zip is ~160 MB, past GitHub's 100 MB hard per-file limit. All three are
+# published on Zenodo as the citable archive; the repo carries the unzipped
+# result JSONs and provenance table instead.
+data/processed/*.zip
