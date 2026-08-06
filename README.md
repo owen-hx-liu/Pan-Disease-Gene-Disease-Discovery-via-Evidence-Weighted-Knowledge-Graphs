@@ -115,11 +115,14 @@ pip install -r requirements.txt
 pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cu128
 
 ./run_all.sh                 # full pipeline (the KGE step needs a CUDA GPU)
-./run_all.sh --skip-kge      # everything except KGE, reusing the committed kge_summary.json
+./run_all.sh --skip-kge      # everything except KGE, reusing the frozen result JSONs
 ```
 
-The tables and figures read only the frozen result JSONs, so you can regenerate them without
-a GPU:
+A bare `git clone` only carries a partial subset of `data/processed/results/` (kept as a small,
+browsable sample; GitHub has no clean way to track ~9 MB of JSON without also inviting the 160 MB
+`splits.zip` past its 100 MB per-file limit). To regenerate every table and figure without a GPU,
+first download and unzip `splits.zip` and `results.zip` from the
+[Zenodo record](https://doi.org/10.5281/zenodo.21828739) into `data/processed/`, then:
 
 ```bash
 python scripts/make_tables.py    # tables/table1-6 and tableS1 (.md and .tex)
@@ -128,16 +131,18 @@ python scripts/make_figures.py   # figures/fig1-4 (.png and .pdf)
 
 All runs use fixed seeds (42, 1, 7). Paths are repo-relative; there are no hard-coded machine
 paths or secrets. Heavy steps checkpoint to disk. Reproducing the KGE arm from scratch needs
-a CUDA GPU and is slow (about 40 minutes per model-by-regime-by-seed cell); the committed
-result JSONs let you rebuild every table and figure without retraining.
+a CUDA GPU and is slow (about 40 minutes per model-by-regime-by-seed cell); the frozen result
+JSONs on Zenodo let you rebuild every table and figure without retraining.
 
 ## Data, provenance, and licensing
 
 The knowledge graph is derived from the Monarch Initiative (about 98.3% of edges; CC BY 4.0)
 augmented with seven curated sources: DGIdb, GWAS Catalog, DrugCentral, Orphadata,
-Gene2Phenotype, CIViC, and DIDA. Per-source contributions are in
-`data/processed/provenance/`. Because Monarch aggregates several primary sources, do not read
-"supported by N datasets" as N independent votes.
+Gene2Phenotype, CIViC, and DIDA. Per-source contributions are archived as
+`provenance/source_provenance.csv` in `provenance.zip` on the
+[Zenodo record](https://doi.org/10.5281/zenodo.21828739) (the `data/processed/provenance/`
+path is git-ignored, not part of the GitHub tree). Because Monarch aggregates several primary
+sources, do not read "supported by N datasets" as N independent votes.
 
 Two licenses apply:
 
